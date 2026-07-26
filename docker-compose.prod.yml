@@ -1,0 +1,91 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: production          # используем production stage из Dockerfile
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${APP_URL}
+    # Порт НЕ пробрасываем наружу — только через nginx
+
+  laravel:
+    build:
+      context: ./backend
+      target: production
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - APP_ENV=production
+      - APP_KEY=${APP_KEY}
+      - APP_URL=${APP_URL}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NLP_SERVICE_URL=http://nlp:8001
+      - STRIPE_KEY=${STRIPE_KEY}
+      - STRIPE_SECRET=${STRIPE_SECRET}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+
+  nlp:
+    build:
+      context: ./nlp-service
+      target: production
+    restart: unless-stopped
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+    # NLP не торчит наружу — только laravel может до него достучаться
+
+  nginx:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      # Статика Next.js — nginx отдаёт напрямую, минуя Node
+      - frontend_static:/var/www/frontend/.next/static:ro
+      - ./ssl:/etc/nginx/ssl:ro           # сертификаты (Let's Encrypt)
+    depends_on:
+      - frontend
+      - laravel
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+      
+#  queue-worker:
+#    build: ./backend
+#    command: php artisan queue:work
+#    depends_on:
+#      - laravel
+#      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
+  frontend_static:
+      
+
+

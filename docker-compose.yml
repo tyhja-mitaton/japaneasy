@@ -1,0 +1,82 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules        # не перезаписывать node_modules с хоста
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_OPTIONS=--max-old-space-size=4096
+
+  laravel:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - NLP_SERVICE_URL=http://nlp:8001
+
+  nlp:
+    build: ./nlp-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./nlp-service:/app
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=japaneseasy
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
+      - laravel
+    restart: on-failure          # перезапустится если frontend ещё не готов
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"   # веб-интерфейс
+      - "1025:1025"   # SMTP
+#  queue-worker:
+#    build: ./backend
+#    command: php artisan queue:work
+#    depends_on:
+#      - laravel
+#      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
