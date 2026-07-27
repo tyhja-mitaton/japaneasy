@@ -69,16 +69,14 @@ type Mode = 'translation' | 'grammar';
 
 // Цвета для грамматических паттернов
 const PATTERN_COLORS = [
-  'bg-blue-100 text-blue-800',
-  'bg-violet-100 text-violet-800',
-  'bg-teal-100 text-teal-800',
-  'bg-rose-100 text-rose-800',
-  'bg-amber-100 text-amber-800',
-  'bg-green-100 text-green-800',
-  'bg-orange-100 text-orange-800',
-  'bg-sky-100 text-sky-800',
-  'bg-fuchsia-100 text-fuchsia-800',
-  'bg-indigo-100 text-indigo-800',
+  'background: rgba(232,96,74,0.12); color: #D14A35;',
+  'background: rgba(45,90,61,0.12); color: #2D5A3D;',
+  'background: rgba(139,115,85,0.12); color: #8B7355;',
+  'background: rgba(107,127,204,0.12); color: #6B7FCC;',
+  'background: rgba(168,130,100,0.12); color: #A88264;',
+  'background: rgba(180,140,80,0.12); color: #B48C50;',
+  'background: rgba(140,100,160,0.12); color: #8C64A0;',
+  'background: rgba(100,160,160,0.12); color: #64A0A0;',
 ];
 
 // Каждому grammar_code назначаем цвет детерминированно
@@ -123,11 +121,27 @@ export default function TextAnalyzerPage() {
   // Загрузка грамматики при переключении режима
   useEffect(() => {
     if (mode !== 'grammar' || grammarMatches.length > 0) return;
-    setNlpLoading(true);
-    apiFetch(`/api/texts/${id}/grammar`, { method: 'POST' })
-        .then(data => setGrammarMatches(data.patterns ?? []))
-        .finally(() => setNlpLoading(false));
-  }, [mode]);
+
+    let cancelled = false;
+
+    const fetchGrammar = async () => {
+      setNlpLoading(true);
+      try {
+        const data = await apiFetch(`/api/texts/${id}/grammar`, { method: 'POST' });
+        if (!cancelled) {
+          setGrammarMatches(data.patterns ?? []);
+        }
+      } finally {
+        if (!cancelled) {
+          setNlpLoading(false);
+        }
+      }
+    };
+
+    fetchGrammar();
+
+    return () => { cancelled = true; };
+  }, [mode, grammarMatches.length, id]);
 
   const vocabBaseforms = new Set(vocabulary.map(v => v.base_form));
 
@@ -211,9 +225,8 @@ export default function TextAnalyzerPage() {
       if (isSpace) return <span key={i}>{token.surface}</span>;
 
       const inVocab = mode === 'translation' && vocabBaseforms.has(token.base_form);
-      const grammarMatch = mode === 'grammar' ? matchByStart.get(token.start) : undefined;
       const inMatch = mode === 'grammar' && matchedPositions.has(token.start);
-      const colorClass = inMatch ? colorForCode(
+      const colorStyle = inMatch ? colorForCode(
           grammarMatches.find(m => m.start <= token.start && m.end >= token.end)?.grammar_code ?? ''
       ) : '';
 
@@ -223,9 +236,27 @@ export default function TextAnalyzerPage() {
       const inner = showRuby ? (
           <ruby>
             {token.surface}
-            <rt className="text-xs">{reading}</rt>
+            <rt style={{ fontSize: 10, color: '#8B7355' }}>{reading}</rt>
           </ruby>
       ) : token.surface;
+
+      const baseStyle: React.CSSProperties = {
+        cursor: 'pointer',
+        borderRadius: 4,
+        padding: '2px 4px',
+        transition: 'all 0.15s',
+      };
+
+      let modeStyle: React.CSSProperties = {};
+      if (mode === 'translation') {
+        modeStyle = inVocab
+          ? { background: '#FEF3C7', color: '#1A1A1A' }
+          : { background: 'transparent', color: '#1A1A1A' };
+      } else {
+        modeStyle = inMatch
+          ? { background: colorStyle.split(';')[0].replace('background: ', ''), color: colorStyle.split('color: ')[1]?.replace(';', '') || '#1A1A1A' }
+          : { background: 'transparent', color: '#1A1A1A' };
+      }
 
       return (
           <span
@@ -237,16 +268,20 @@ export default function TextAnalyzerPage() {
                   if (m) handleGrammarClick(m);
                 }
               }}
-              className={[
-                'cursor-pointer rounded px-0.5 transition',
-                mode === 'translation'
-                    ? inVocab
-                        ? 'bg-yellow-200 hover:bg-yellow-300 text-gray-700'
-                        : 'hover:bg-gray-100 text-gray-700'
-                    : inMatch
-                        ? `${colorClass} hover:opacity-75`
-                        : 'hover:bg-gray-100 text-gray-700',
-              ].join(' ')}
+              style={{
+                ...baseStyle,
+                ...modeStyle,
+              }}
+              onMouseEnter={e => {
+                if (!inMatch && !inVocab) {
+                  e.currentTarget.style.background = 'rgba(212,197,176,0.3)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!inMatch && !inVocab) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
           >
           {inner}
         </span>
@@ -256,196 +291,379 @@ export default function TextAnalyzerPage() {
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center min-h-screen text-gray-400">
-          Loading…
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          color: '#8B7355',
+          fontSize: 16,
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
+            Загрузка…
+          </div>
         </div>
     );
   }
 
   return (
-      <div className="max-w-6xl mx-auto py-8 px-4">
-        <div className="mb-4">
-          <button
-              onClick={() => router.push('/texts')}
-              className="text-sm text-indigo-600 hover:underline mb-2 block"
-          >
-            ← My Texts
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">{text?.title}</h1>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <button
+            onClick={() => router.push('/texts')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              color: '#8B7355',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: 0,
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
+            onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
+        >
+          ← Мои тексты
+        </button>
+        <h1 style={{
+          fontFamily: "'Noto Serif JP'",
+          fontSize: 'clamp(20px, 2.5vw, 28px)',
+          fontWeight: 700,
+          color: '#1A1A1A',
+        }}>
+          {text?.title}
+        </h1>
+      </div>
+
+      {/* Controls */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 24,
+        flexWrap: 'wrap',
+      }}>
+        {/* Mode toggle */}
+        <div style={{
+          display: 'flex',
+          gap: 4,
+          background: 'white',
+          borderRadius: 12,
+          padding: 4,
+          border: '1px solid #EDE8E1',
+        }}>
+          {(['translation', 'grammar'] as Mode[]).map(m => (
+              <button
+                  key={m}
+                  onClick={() => {
+                    setMode(m);
+                    setSelectedWord(null);
+                    setSelectedGrammar(null);
+                  }}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: mode === m ? '#E8604A' : 'transparent',
+                    color: mode === m ? 'white' : '#8B7355',
+                  }}
+              >
+                {m === 'translation' ? '🔍 Перевод' : '📖 Грамматика'}
+              </button>
+          ))}
         </div>
 
-        {/* Панель управления */}
-        <div className="flex items-center gap-4 mb-6 flex-wrap">
-          {/* Переключатель режимов */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-            {(['translation', 'grammar'] as Mode[]).map(m => (
+        {/* Furigana toggle */}
+        <button
+            onClick={() => setShowFurigana(p => !p)}
+            style={{
+              padding: '10px 18px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 500,
+              border: '1.5px solid #EDE8E1',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              background: showFurigana ? '#E8604A' : 'white',
+              color: showFurigana ? 'white' : '#1A1A1A',
+            }}
+            onMouseEnter={e => {
+              if (!showFurigana) e.currentTarget.style.borderColor = '#E8604A';
+            }}
+            onMouseLeave={e => {
+              if (!showFurigana) e.currentTarget.style.borderColor = '#EDE8E1';
+            }}
+        >
+          振り仮名 {showFurigana ? 'ON' : 'OFF'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+        {/* Text container */}
+        <div style={{
+          flex: 1,
+          background: 'white',
+          borderRadius: 20,
+          border: '1px solid #EDE8E1',
+          padding: 28,
+          minHeight: 260,
+        }}>
+          {nlpLoading && mode === 'grammar' && (
+              <div style={{ fontSize: 14, color: '#8B7355', marginBottom: 12 }}>
+                Анализ грамматики…
+              </div>
+          )}
+          {mode === 'grammar' && !nlpLoading && grammarMatches.length === 0 && (
+              <div style={{ fontSize: 14, color: '#E8604A', marginBottom: 12 }}>
+                Грамматические паттерны не найдены. Добавьте паттерны в статьи через админ-панель.
+              </div>
+          )}
+          <div
+              style={{
+                lineHeight: showFurigana ? 2.5 : 1.8,
+                fontSize: showFurigana ? 15 : 17,
+                userSelect: 'none',
+              }}
+          >
+            {renderTokens()}
+          </div>
+        </div>
+
+        {/* Side panel */}
+        <div style={{ width: 300, flexShrink: 0 }}>
+          {/* Translation mode panel */}
+          {mode === 'translation' && selectedWord && (
+              <div style={{
+                background: 'white',
+                borderRadius: 20,
+                border: '1px solid #EDE8E1',
+                padding: 24,
+                position: 'sticky',
+                top: 88,
+              }}>
+                <div style={{
+                  fontFamily: "'Noto Serif JP'",
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: '#1A1A1A',
+                  marginBottom: 8,
+                }}>
+                  {selectedWord.surface}
+                </div>
+                {selectedWord.surface !== selectedWord.base_form && (
+                    <div style={{ fontSize: 16, color: '#8B7355', marginBottom: 4 }}>
+                      {selectedWord.base_form}
+                    </div>
+                )}
+                {selectedWord.reading && (
+                    <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 16 }}>
+                      {katakanaToHiragana(selectedWord.reading)} · {selectedWord.reading}
+                    </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                  {selectedWord.pos && (
+                      <span style={{
+                        background: 'rgba(139,115,85,0.12)',
+                        color: '#8B7355',
+                        fontSize: 12,
+                        padding: '4px 10px',
+                        borderRadius: 20,
+                      }}>
+                        {selectedWord.pos}
+                      </span>
+                  )}
+                  {selectedWord.jlpt && (
+                      <span style={{
+                        background: 'rgba(232,96,74,0.1)',
+                        color: '#E8604A',
+                        fontSize: 12,
+                        padding: '4px 10px',
+                        borderRadius: 20,
+                        textTransform: 'uppercase',
+                      }}>
+                        {selectedWord.jlpt}
+                      </span>
+                  )}
+                </div>
+                {selectedWord.translation ? (
+                    <p style={{ color: '#1A1A1A', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+                      {selectedWord.translation}
+                    </p>
+                ) : (
+                    <p style={{ color: '#8B7355', fontSize: 14, fontStyle: 'italic', marginBottom: 20 }}>
+                      Перевод не найден
+                    </p>
+                )}
                 <button
-                    key={m}
-                    onClick={() => {
-                      setMode(m);
-                      setSelectedWord(null);
-                      setSelectedGrammar(null);
+                    onClick={toggleVocabulary}
+                    style={{
+                      width: '100%',
+                      borderRadius: 50,
+                      padding: '12px',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: selectedWord.inVocabulary ? '#FEF3C7' : '#E8604A',
+                      color: selectedWord.inVocabulary ? '#92400E' : 'white',
                     }}
-                    className={[
-                      'px-4 py-1.5 rounded-md text-sm font-medium transition',
-                      mode === m
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700',
-                    ].join(' ')}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
                 >
-                  {m === 'translation' ? '🔍 Translation' : '📖 Grammar'}
+                  {selectedWord.inVocabulary ? '✓ В словаре' : '+ Добавить в словарь'}
                 </button>
-            ))}
-          </div>
+              </div>
+          )}
 
-          {/* Кнопка фуриганы */}
-          <button
-              onClick={() => setShowFurigana(p => !p)}
-              className={[
-                'px-4 py-1.5 rounded-lg text-sm font-medium border transition',
-                showFurigana
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400',
-              ].join(' ')}
-          >
-            振り仮名 {showFurigana ? 'ON' : 'OFF'}
-          </button>
-        </div>
-
-        <div className="flex gap-6">
-          {/* Текст */}
-          <div className="flex-1 bg-white rounded-2xl border border-gray-200 p-6 min-h-64">
-            {nlpLoading && mode === 'grammar' && (
-                <div className="text-sm text-gray-400 mb-3">Analyzing grammar…</div>
-            )}
-            {mode === 'grammar' && !nlpLoading && grammarMatches.length === 0 && (
-                <div className="text-sm text-amber-600 mb-3">
-                  No grammar patterns found. Add patterns to grammar articles in the admin panel.
+          {/* Grammar mode panel */}
+          {mode === 'grammar' && selectedGrammar && (
+              <div style={{
+                background: 'white',
+                borderRadius: 20,
+                border: '1px solid #EDE8E1',
+                padding: 24,
+                position: 'sticky',
+                top: 88,
+              }}>
+                <div style={{
+                  fontFamily: "'Noto Serif JP'",
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: '#1A1A1A',
+                  marginBottom: 8,
+                }}>
+                  {selectedGrammar.surface}
                 </div>
-            )}
-            <div
-                className={[
-                  'leading-relaxed select-none',
-                  showFurigana ? 'text-base' : 'text-lg',
-                ].join(' ')}
-                style={{ lineHeight: showFurigana ? '2.5rem' : undefined }}
-            >
-              {renderTokens()}
-            </div>
-          </div>
+                <div style={{
+                  fontSize: 12,
+                  color: '#8B7355',
+                  fontFamily: 'monospace',
+                  marginBottom: 16,
+                }}>
+                  {selectedGrammar.grammar_code}
+                </div>
+                {selectedGrammar.article ? (
+                    <>
+                      <h3 style={{
+                        fontWeight: 600,
+                        color: '#1A1A1A',
+                        marginBottom: 12,
+                        fontSize: 16,
+                      }}>
+                        {selectedGrammar.article.title}
+                      </h3>
+                      {selectedGrammar.article.info && (
+                          <p style={{ fontSize: 14, color: '#1A1A1A', marginBottom: 16, lineHeight: 1.6 }}>
+                            {selectedGrammar.article.info}
+                          </p>
+                      )}
+                      <a
+                          href={`/grammar/${selectedGrammar.grammar_code}`}
+                          style={{
+                            color: '#E8604A',
+                            fontSize: 14,
+                            textDecoration: 'none',
+                            fontWeight: 500,
+                          }}
+                      >
+                        Читать полностью →
+                      </a>
+                    </>
+                ) : (
+                    <p style={{ fontSize: 14, color: '#8B7355', fontStyle: 'italic' }}>
+                      Статья для этого паттерна пока не создана.
+                    </p>
+                )}
+              </div>
+          )}
 
-          {/* Правая панель */}
-          <div className="w-80 shrink-0">
-            {/* Translation mode panel */}
-            {mode === 'translation' && selectedWord && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-5 sticky top-8">
-                  <div className="text-3xl font-bold text-gray-900 mb-1">
-                    {selectedWord.surface}
-                  </div>
-                  {selectedWord.surface !== selectedWord.base_form && (
-                      <div className="text-lg text-gray-500 mb-1">{selectedWord.base_form}</div>
-                  )}
-                  {selectedWord.reading && (
-                      <div className="text-sm text-gray-400 mb-3">
-                        {katakanaToHiragana(selectedWord.reading)} · {selectedWord.reading}
+          {/* Hints */}
+          {mode === 'translation' && !selectedWord && (
+              <div style={{
+                background: 'white',
+                borderRadius: 20,
+                border: '2px dashed #EDE8E1',
+                padding: 24,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.5 }}>🔍</div>
+                <div style={{ fontSize: 14, color: '#8B7355' }}>
+                  Нажмите на слово, чтобы увидеть перевод
+                </div>
+              </div>
+          )}
+          {mode === 'grammar' && !selectedGrammar && !nlpLoading && (
+              <div style={{
+                background: 'white',
+                borderRadius: 20,
+                border: '2px dashed #EDE8E1',
+                padding: 24,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.5 }}>📖</div>
+                <div style={{ fontSize: 14, color: '#8B7355' }}>
+                  Нажмите на подсвеченное слово, чтобы увидеть грамматику
+                </div>
+              </div>
+          )}
+
+          {/* Pattern legend */}
+          {mode === 'grammar' && grammarMatches.length > 0 && (
+              <div style={{
+                marginTop: 16,
+                background: 'white',
+                borderRadius: 20,
+                border: '1px solid #EDE8E1',
+                padding: 16,
+              }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#8B7355',
+                  marginBottom: 12,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}>
+                  Найденные паттерны
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[...new Set(grammarMatches.map(m => m.grammar_code))].map(code => (
+                      <div key={code} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}>
+                        <span style={{
+                          fontSize: 12,
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          background: colorForCode(code).split(';')[0].replace('background: ', ''),
+                          color: colorForCode(code).split('color: ')[1]?.replace(';', '') || '#1A1A1A',
+                        }}>
+                          {code}
+                        </span>
                       </div>
-                  )}
-                  <div className="flex gap-2 mb-4 flex-wrap">
-                    {selectedWord.pos && (
-                        <span className="bg-gray-300 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                    {selectedWord.pos}
-                  </span>
-                    )}
-                    {selectedWord.jlpt && (
-                        <span className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full uppercase">
-                    {selectedWord.jlpt}
-                  </span>
-                    )}
-                  </div>
-                  {selectedWord.translation ? (
-                      <p className="text-gray-700 text-sm mb-4">{selectedWord.translation}</p>
-                  ) : (
-                      <p className="text-gray-400 text-sm italic mb-4">No translation found</p>
-                  )}
-                  <button
-                      onClick={toggleVocabulary}
-                      className={[
-                        'w-full rounded-lg py-2 text-sm font-medium transition',
-                        selectedWord.inVocabulary
-                            ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700',
-                      ].join(' ')}
-                  >
-                    {selectedWord.inVocabulary ? '✓ In vocabulary' : '+ Add to vocabulary'}
-                  </button>
+                  ))}
                 </div>
-            )}
-
-            {/* Grammar mode panel */}
-            {mode === 'grammar' && selectedGrammar && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-5 sticky top-8">
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
-                    {selectedGrammar.surface}
-                  </div>
-                  <div className="text-xs text-gray-400 font-mono mb-4">
-                    {selectedGrammar.grammar_code}
-                  </div>
-                  {selectedGrammar.article ? (
-                      <>
-                        <h3 className="font-semibold text-gray-800 mb-2">
-                          {selectedGrammar.article.title}
-                        </h3>
-                        {selectedGrammar.article.info && (
-                            <p className="text-sm text-gray-600 mb-3">
-                              {selectedGrammar.article.info}
-                            </p>
-                        )}
-                        <a
-                            href={`/grammar/${selectedGrammar.grammar_code}`}
-                            className="text-indigo-600 text-sm hover:underline"
-                        >
-                          Read full article →
-                        </a>
-                      </>
-                  ) : (
-                      <p className="text-sm text-gray-400 italic">
-                        No article yet for this pattern.
-                      </p>
-                  )}
-                </div>
-            )}
-
-            {/* Подсказки */}
-            {mode === 'translation' && !selectedWord && (
-                <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-5 text-center text-sm text-gray-400">
-                  Click a word to see its translation
-                </div>
-            )}
-            {mode === 'grammar' && !selectedGrammar && !nlpLoading && (
-                <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-5 text-center text-sm text-gray-400">
-                  Click a highlighted word to see grammar info
-                </div>
-            )}
-
-            {/* Легенда цветов */}
-            {mode === 'grammar' && grammarMatches.length > 0 && (
-                <div className="mt-4 bg-white rounded-2xl border border-gray-200 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                    Patterns found
-                  </div>
-                  <div className="space-y-1">
-                    {[...new Set(grammarMatches.map(m => m.grammar_code))].map(code => (
-                        <div key={code} className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${colorForCode(code)}`}>
-                      {code}
-                    </span>
-                        </div>
-                    ))}
-                  </div>
-                </div>
-            )}
-          </div>
+              </div>
+          )}
         </div>
       </div>
+    </div>
   );
 }

@@ -24,72 +24,233 @@ export default function Page() {
     try {
       await authApi.register(form);
       router.push('/auth/check-email');
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      setError(error.message || 'Ошибка регистрации. Попробуйте снова.');
     } finally {
       setLoading(false);
     }
   };
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    border: '1px solid #EDE8E1',
+    borderRadius: 12,
+    padding: '14px 16px',
+    fontSize: 15,
+    fontFamily: "'Noto Sans JP', sans-serif",
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    color: '#1A1A1A',
+    background: 'white',
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Create account</h1>
-        <p className="text-gray-500 mb-6 text-sm">Start learning Japanese today</p>
+    <div style={{
+      minHeight: 'calc(100vh - 64px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '48px 24px',
+    }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'rgba(232,96,74,0.1)',
+            borderRadius: 50,
+            padding: '6px 14px',
+            marginBottom: 20,
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#E8604A',
+          }}>
+            <span>🌸</span> Начните учить японский
+          </div>
+          <h1 style={{
+            fontFamily: "'Noto Serif JP'",
+            fontSize: 28,
+            fontWeight: 700,
+            color: '#1A1A1A',
+            marginBottom: 8,
+          }}>
+            Создать аккаунт
+          </h1>
+          <p style={{
+            fontSize: 15,
+            color: '#8B7355',
+          }}>
+            Бесплатно и без ограничений
+          </p>
+        </div>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>
-        )}
+        {/* Card */}
+        <div style={{
+          background: 'white',
+          borderRadius: 20,
+          border: '1px solid #EDE8E1',
+          padding: 32,
+        }}>
+          {error && (
+            <div style={{
+              marginBottom: 20,
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'rgba(232,96,74,0.08)',
+              color: '#D14A35',
+              fontSize: 14,
+            }}>
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              name="name" type="text" required
-              value={form.name} onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-500"
-              placeholder="Your name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              name="email" type="email" required
-              value={form.email} onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-500"
-              placeholder="you@example.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              name="password" type="password" required
-              value={form.password} onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-500"
-              placeholder="Min. 8 characters"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
-            <input
-              name="password_confirmation" type="password" required
-              value={form.password_confirmation} onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-500"
-              placeholder="Repeat password"
-            />
-          </div>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#1A1A1A',
+                marginBottom: 8,
+              }}>
+                Имя
+              </label>
+              <input
+                name="name"
+                type="text"
+                required
+                value={form.name}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="Ваше имя"
+                onFocus={e => e.target.style.borderColor = '#E8604A'}
+                onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+              />
+            </div>
 
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-indigo-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#1A1A1A',
+                marginBottom: 8,
+              }}>
+                Email
+              </label>
+              <input
+                name="email"
+                type="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="you@example.com"
+                onFocus={e => e.target.style.borderColor = '#E8604A'}
+                onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#1A1A1A',
+                marginBottom: 8,
+              }}>
+                Пароль
+              </label>
+              <input
+                name="password"
+                type="password"
+                required
+                value={form.password}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="Минимум 8 символов"
+                onFocus={e => e.target.style.borderColor = '#E8604A'}
+                onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#1A1A1A',
+                marginBottom: 8,
+              }}>
+                Подтвердите пароль
+              </label>
+              <input
+                name="password_confirmation"
+                type="password"
+                required
+                value={form.password_confirmation}
+                onChange={handleChange}
+                style={inputStyle}
+                placeholder="Повторите пароль"
+                onFocus={e => e.target.style.borderColor = '#E8604A'}
+                onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                background: loading ? '#D4C5B0' : '#E8604A',
+                color: 'white',
+                border: 'none',
+                borderRadius: 50,
+                padding: '14px',
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'background 0.2s, transform 0.15s',
+              }}
+              onMouseEnter={e => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#D14A35';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#E8604A';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
+            >
+              {loading ? 'Создание…' : 'Создать аккаунт'}
+            </button>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <p style={{
+          marginTop: 24,
+          textAlign: 'center',
+          fontSize: 14,
+          color: '#8B7355',
+        }}>
+          Уже есть аккаунт?{' '}
+          <Link
+            href="/auth/login"
+            style={{
+              color: '#E8604A',
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}
           >
-            {loading ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="text-indigo-600 hover:underline">Sign in</Link>
+            Войти
+          </Link>
         </p>
       </div>
     </div>

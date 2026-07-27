@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 // ── Palette ──────────────────────────────────────────────────────────────────
@@ -12,36 +11,11 @@ import Link from 'next/link';
 // #2D5A3D — тёмно-зелёный (навигация, тихие акценты)
 
 export default function Page() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   return (
-    <div style={{ fontFamily: "'Noto Sans JP', 'Inter', sans-serif", background: '#F7F3EE', color: '#1A1A1A', minHeight: '100vh' }}>
+    <div>
 
-      {/* ── Google Fonts ── */}
+      {/* ── Styles ── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        .nav-link {
-          color: #1A1A1A;
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 500;
-          letter-spacing: 0.01em;
-          transition: color 0.2s;
-          padding: 4px 0;
-          border-bottom: 2px solid transparent;
-        }
-        .nav-link:hover { color: #E8604A; border-bottom-color: #E8604A; }
-
         .btn-primary {
           background: #E8604A;
           color: white;
@@ -140,47 +114,8 @@ export default function Page() {
           .hero-visual { display: none !important; }
           .features-grid { grid-template-columns: 1fr 1fr !important; }
           .plans-grid { grid-template-columns: 1fr !important; }
-          .nav-links { display: none; }
         }
       `}</style>
-
-      {/* ── Navbar ────────────────────────────────────────────────────────── */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        background: scrolled ? 'rgba(247,243,238,0.95)' : '#F7F3EE',
-        backdropFilter: scrolled ? 'blur(12px)' : 'none',
-        borderBottom: scrolled ? '1px solid #EDE8E1' : '1px solid transparent',
-        transition: 'all 0.3s',
-        padding: '0 max(24px, calc(50vw - 640px))',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', height: 64, gap: 48 }}>
-          {/* Logo */}
-          <Link href="/" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <span style={{ fontFamily: "'Noto Serif JP'", fontSize: 20, fontWeight: 700, color: '#1A1A1A', letterSpacing: '-0.02em' }}>日本語</span>
-              <span style={{ fontSize: 9, fontWeight: 600, color: '#8B7355', letterSpacing: '0.18em' }}>NIHONGO</span>
-            </div>
-          </Link>
-
-          {/* Nav */}
-          <nav className="nav-links" style={{ display: 'flex', gap: 32, flex: 1 }}>
-            {['Главная', 'Грамматика', 'Словарь', 'Аудио/Видео', 'Сообщество'].map(item => (
-              <a key={item} href="#" className="nav-link">{item}</a>
-            ))}
-          </nav>
-
-          {/* Right */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#8B7355', fontSize: 16 }}>🔍</button>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: '#8B7355', fontSize: 16 }}>🌙</button>
-            <Link href="/auth/login" style={{ textDecoration: 'none' }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#E8604A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 600 }}>
-                Я
-              </div>
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section style={{
@@ -323,7 +258,7 @@ export default function Page() {
         }}>
           {[
             { icon: '📄', title: 'Тексты', desc: 'Загружайте любые тексты на японском языке и получайте перевод, грамматический разбор и список слов.', href: '/texts', color: '#E8604A' },
-            { icon: '📖', title: 'Грамматика', desc: 'Изучайте грамматические конструкции с примерами на реальных текстах и тренируйте их в упражнениях.', href: '/admin/grammar', color: '#2D5A3D' },
+            { icon: '📖', title: 'Грамматика', desc: 'Изучайте грамматические конструкции с примерами на реальных текстах и тренируйте их в упражнениях.', href: '/grammar', color: '#2D5A3D' },
             { icon: '🔍', title: 'Словарь', desc: 'Сохраняйте новые слова, повторяйте их с помощью карточек и отслеживайте свой прогресс.', href: '/vocabulary', color: '#8B7355' },
             { icon: '▶', title: 'Аудио/Видео', desc: 'Смотрите видео и слушайте аудио с субтитрами, сохраняйте слова и выражения.', href: '#', color: '#6B7FCC' },
           ].map(f => (
@@ -469,23 +404,6 @@ export default function Page() {
           </div>
         </div>
       </section>
-
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer style={{
-        borderTop: '1px solid #EDE8E1',
-        padding: '32px max(24px, calc(50vw - 640px))',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: 16,
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontFamily: "'Noto Serif JP'", fontSize: 16, fontWeight: 700, color: '#1A1A1A' }}>日本語</span>
-          <span style={{ fontSize: 9, fontWeight: 600, color: '#8B7355', letterSpacing: '0.18em' }}>NIHONGO</span>
-        </div>
-        <div style={{ fontSize: 13, color: '#8B7355' }}>
-          継続は力なり — Настойчивость — это сила
-        </div>
-        <div style={{ fontSize: 12, color: '#D4C5B0' }}>© 2026 Nihongo</div>
-      </footer>
     </div>
   );
 }

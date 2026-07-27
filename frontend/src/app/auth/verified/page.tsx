@@ -3,24 +3,89 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+type StatusContent = {
+  icon: string;
+  title: string;
+  text: string;
+  color: string;
+};
+
 export default function VerifiedPage() {
     const params = useSearchParams();
     const status = params.get('status');
 
-    const content = {
-        success: { icon: '✅', title: 'Email verified!', text: 'Your account is now active.' },
-        expired: { icon: '⏰', title: 'Link expired', text: 'Please request a new verification email.' },
-        error:   { icon: '❌', title: 'Invalid link', text: 'This verification link is invalid.' },
-    }[status ?? 'error'] ?? { icon: '❌', title: 'Something went wrong', text: '' };
+    const content: StatusContent = (() => {
+        switch (status) {
+            case 'success':
+                return { icon: '✅', title: 'Email подтверждён!', text: 'Ваш аккаунт активен. Теперь вы можете войти.', color: '#2D5A3D' };
+            case 'expired':
+                return { icon: '⏰', title: 'Ссылка истекла', text: 'Запросите новое письмо для подтверждения.', color: '#E8604A' };
+            default:
+                return { icon: '❌', title: 'Неверная ссылка', text: 'Эта ссылка для подтверждения недействительна.', color: '#D14A35' };
+        }
+    })();
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow p-8 text-center">
-                <div className="text-5xl mb-4">{content.icon}</div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{content.title}</h1>
-                <p className="text-gray-500 text-sm mb-6">{content.text}</p>
-                <Link href="/auth/login" className="text-indigo-600 text-sm hover:underline">
-                    Go to sign in
+        <div style={{
+            minHeight: 'calc(100vh - 64px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '48px 24px',
+        }}>
+            <div style={{
+                width: '100%',
+                maxWidth: 420,
+                background: 'white',
+                borderRadius: 20,
+                border: '1px solid #EDE8E1',
+                padding: 48,
+                textAlign: 'center',
+            }}>
+                <div style={{ fontSize: 64, marginBottom: 24 }}>{content.icon}</div>
+                <h1 style={{
+                    fontFamily: "'Noto Serif JP'",
+                    fontSize: 28,
+                    fontWeight: 700,
+                    color: '#1A1A1A',
+                    marginBottom: 12,
+                }}>
+                    {content.title}
+                </h1>
+                <p style={{
+                    fontSize: 15,
+                    color: '#8B7355',
+                    marginBottom: 32,
+                    lineHeight: 1.6,
+                }}>
+                    {content.text}
+                </p>
+                <Link
+                    href="/auth/login"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: '#E8604A',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 50,
+                        padding: '14px 28px',
+                        fontSize: 15,
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        transition: 'background 0.2s, transform 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.background = '#D14A35';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.background = '#E8604A';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                >
+                    Войти в аккаунт
                 </Link>
             </div>
         </div>

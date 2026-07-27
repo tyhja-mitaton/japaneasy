@@ -6,10 +6,17 @@ import ReactMarkdown from 'react-markdown';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+type Article = {
+  title: string;
+  info?: string;
+  text: string;
+  code: string;
+};
+
 export default function GrammarArticlePage() {
     const { code } = useParams<{ code: string }>();
     const router = useRouter();
-    const [article, setArticle] = useState<any>(null);
+    const [article, setArticle] = useState<Article | null>(null);
     const [notFound, setNotFound] = useState(false);
 
     useEffect(() => {
@@ -24,28 +31,180 @@ export default function GrammarArticlePage() {
     }, [code]);
 
     if (notFound) return (
-        <div className="max-w-2xl mx-auto py-20 text-center">
-            <div className="text-4xl mb-4">📭</div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Article not found</h1>
-            <p className="text-gray-500 text-sm">No article exists for code <code className="font-mono">{code}</code> yet.</p>
+        <div style={{
+            maxWidth: 640,
+            margin: '0 auto',
+            padding: '80px 24px',
+            textAlign: 'center',
+        }}>
+            <div style={{ fontSize: 64, marginBottom: 24 }}>📭</div>
+            <h1 style={{
+                fontFamily: "'Noto Serif JP'",
+                fontSize: 28,
+                fontWeight: 700,
+                color: '#1A1A1A',
+                marginBottom: 12,
+            }}>
+                Статья не найдена
+            </h1>
+            <p style={{
+                fontSize: 15,
+                color: '#8B7355',
+                marginBottom: 32,
+            }}>
+                Статья для кода <code style={{
+                    fontFamily: 'monospace',
+                    background: 'rgba(139,115,85,0.1)',
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                }}>{code}</code> ещё не создана.
+            </p>
+            <button
+                onClick={() => router.push('/grammar')}
+                style={{
+                    background: '#E8604A',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 50,
+                    padding: '14px 28px',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'background 0.2s, transform 0.15s',
+                }}
+                onMouseEnter={e => {
+                    e.currentTarget.style.background = '#D14A35';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                    e.currentTarget.style.background = '#E8604A';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                }}
+            >
+                ← К списку грамматики
+            </button>
         </div>
     );
 
     if (!article) return (
-        <div className="flex items-center justify-center min-h-screen text-gray-400">Loading…</div>
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            color: '#8B7355',
+            fontSize: 16,
+        }}>
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
+                Загрузка…
+            </div>
+        </div>
     );
 
     return (
-        <div className="max-w-2xl mx-auto py-10 px-4">
-            <button onClick={() => router.back()} className="text-sm text-indigo-600 hover:underline mb-6 block">
-                ← Back
+        <div style={{ maxWidth: 1320, margin: '0 auto', padding: '48px 24px' }}>
+            {/* Back button */}
+            <button
+                onClick={() => router.back()}
+                style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: '#8B7355',
+                    marginBottom: 24,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: 0,
+                    transition: 'color 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
+                onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
+            >
+                ← Назад
             </button>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{article.title}</h1>
-            {article.info && (
-                <p className="text-gray-500 text-sm mb-6">{article.info}</p>
-            )}
-            <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{article.text}</ReactMarkdown>
+
+            {/* Article header */}
+            <div style={{ marginBottom: 32 }}>
+                <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'rgba(45,90,61,0.1)',
+                    borderRadius: 50,
+                    padding: '6px 14px',
+                    marginBottom: 16,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#2D5A3D',
+                }}>
+                    <span>📖</span> Грамматика
+                </div>
+
+                <h1 style={{
+                    fontFamily: "'Noto Serif JP'",
+                    fontSize: 'clamp(24px, 3vw, 36px)',
+                    fontWeight: 700,
+                    color: '#1A1A1A',
+                    marginBottom: 12,
+                    lineHeight: 1.3,
+                }}>
+                    {article.title}
+                </h1>
+
+                {article.info && (
+                    <p style={{
+                        fontSize: 16,
+                        color: '#8B7355',
+                        lineHeight: 1.6,
+                    }}>
+                        {article.info}
+                    </p>
+                )}
+            </div>
+
+            {/* Divider */}
+            <div style={{
+                height: 1,
+                background: '#EDE8E1',
+                marginBottom: 32,
+            }} />
+
+            {/* Article content */}
+            <div style={{
+                background: 'white',
+                borderRadius: 20,
+                border: '1px solid #EDE8E1',
+                padding: 32,
+            }}>
+                <div style={{
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                    fontSize: 15,
+                    lineHeight: 1.8,
+                    color: '#1A1A1A',
+                }}>
+                    <ReactMarkdown>{article.text}</ReactMarkdown>
+                </div>
+            </div>
+
+            {/* Code badge */}
+            <div style={{
+                marginTop: 24,
+                display: 'flex',
+                justifyContent: 'center',
+            }}>
+                <div style={{
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    color: '#8B7355',
+                    background: 'rgba(139,115,85,0.08)',
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                }}>
+                    {article.code}
+                </div>
             </div>
         </div>
     );

@@ -9,13 +9,24 @@ use Illuminate\Http\Request;
 
 class GrammarArticleController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $perPage = 10;
+        $page = $request->input('page', 1);
+
         $articles = GrammarArticle::with('author:id,name')
             ->orderBy('created_at', 'desc')
-            ->get(['id', 'title', 'code', 'info', 'pattern', 'author_id', 'created_at', 'updated_at']);
+            ->paginate($perPage, ['id', 'title', 'code', 'info', 'pattern', 'author_id', 'created_at', 'updated_at'], 'page', $page);
 
-        return response()->json($articles);
+        return response()->json([
+            'data' => $articles->items(),
+            'meta' => [
+                'current_page' => $articles->currentPage(),
+                'last_page' => $articles->lastPage(),
+                'per_page' => $articles->perPage(),
+                'total' => $articles->total(),
+            ],
+        ]);
     }
 
     public function show(GrammarArticle $grammarArticle): JsonResponse
