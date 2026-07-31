@@ -74,4 +74,43 @@ class VocabularyController extends Controller
             'Content-Disposition' => 'attachment; filename="vocabulary.txt"',
         ]);
     }
+
+    // Экспорт словаря в CSV (для Excel/Google Sheets и импорта в Anki)
+    public function exportCsv(Request $request): Response
+    {
+        $items = VocabularyItem::where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $handle = fopen('php://temp', 'w+');
+
+        // UTF-8 BOM для корректного открытия в Excel
+        fwrite($handle, "\xEF\xBB\xBF");
+
+        fputcsv($handle, [
+            'surface', 'base_form', 'reading', 'pos',
+            'translation', 'context_sentence', 'created_at',
+        ]);
+
+        foreach ($items as $item) {
+            fputcsv($handle, [
+                $item->surface,
+                $item->base_form,
+                $item->reading,
+                $item->pos,
+                $item->translation,
+                $item->context_sentence,
+                $item->created_at?->toDateTimeString(),
+            ]);
+        }
+
+        rewind($handle);
+        $content = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($content, 200, [
+            'Content-Type'        => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="vocabulary.csv"',
+        ]);
+    }
 }

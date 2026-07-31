@@ -33,6 +33,10 @@ composer dev           # runs artisan serve + queue:listen + pail + vite concurr
 
 **Database:** PostgreSQL in Docker, SQLite for local dev and tests. Migrations: `php artisan migrate`
 
+**WARNING — tests must NEVER touch the working PostgreSQL DB.** Tests use `RefreshDatabase`, which runs `migrate:fresh` (drops ALL tables). `phpunit.xml` forces sqlite via `<server name="DB_CONNECTION" value="sqlite" force="true"/>` — `server` (not `env`) is required because Laravel's `env()` resolves `$_SERVER` first, where the container's `DB_CONNECTION=pgsql` lives. `tests/TestCase.php` has a guard that refuses to run unless the effective connection is sqlite. Do not change these.
+
+**Dev server staleness:** the laravel container must be built with `target: dev` (docker-compose.yml). A production-stage build bakes opcache with `validate_timestamps=0`, so a long-running `artisan serve` silently ignores code changes (symptoms: new routes 404, "route could not be found"). If `docker compose build laravel` fails on network, `./backend/docker/php.dev.ini` is volume-mounted over the baked prod ini to keep opcache off.
+
 **Auth flow:** Sanctum tokens, email verification required before login. Frontend stores token in localStorage, sends as `Authorization: Bearer <token>`.
 
 **Roles:** Uses Spatie permission (roles: user, manager, administrator). Admin routes require `role:manager|administrator`.

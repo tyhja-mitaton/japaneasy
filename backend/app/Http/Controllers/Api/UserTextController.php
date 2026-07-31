@@ -48,6 +48,28 @@ class UserTextController extends Controller
         return response()->json($userText);
     }
 
+    public function update(Request $request, UserText $userText): JsonResponse
+    {
+        if ($userText->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $data = $request->validate([
+            'content' => ['nullable', 'string', 'max:50000'],
+            'title'   => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (array_key_exists('title', $data)) {
+            $userText->title = $data['title'];
+        }
+        if (array_key_exists('content', $data)) {
+            $userText->content = $data['content'];
+        }
+        $userText->save();
+
+        return response()->json($userText);
+    }
+
     public function destroy(Request $request, UserText $userText): JsonResponse
     {
         if ($userText->user_id !== $request->user()->id) {

@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/auth-api';
+import { authApi, notifyAuthChanged, AUTH_CHANGED_EVENT } from '@/lib/auth-api';
 
 type UserInfo = {
+  id?: number;
   name?: string;
 };
 
@@ -15,6 +16,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -23,17 +25,36 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const refreshAuth = () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoggedIn(false);
+        setUserName('');
+        setUserId(null);
+        return;
+      }
 
-    authApi.me()
-      .then((user: UserInfo) => {
-        setIsLoggedIn(true);
-        setUserName(user.name?.charAt(0) || 'Я');
-      })
-      .catch(() => {
-        localStorage.removeItem('token');
-      });
+      authApi.me()
+        .then((user: UserInfo) => {
+          setIsLoggedIn(true);
+          setUserName(user.name?.charAt(0) || 'Я');
+          setUserId(user.id ?? null);
+        })
+        .catch(() => {
+          localStorage.removeItem('token');
+          setIsLoggedIn(false);
+          setUserName('');
+          setUserId(null);
+        });
+    };
+
+    refreshAuth();
+    window.addEventListener(AUTH_CHANGED_EVENT, refreshAuth);
+    window.addEventListener('storage', refreshAuth);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, refreshAuth);
+      window.removeEventListener('storage', refreshAuth);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -41,8 +62,10 @@ export default function Navbar() {
       await authApi.logout();
     } finally {
       localStorage.removeItem('token');
+      notifyAuthChanged();
       setIsLoggedIn(false);
       setUserName('');
+      setUserId(null);
       router.push('/');
     }
   };
@@ -178,8 +201,28 @@ export default function Navbar() {
                   color: 'white',
                   fontSize: 14,
                   fontWeight: 600,
-                }}>
-                  {userName || 'Я'}
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  transition: 'transform 0.15s',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.06)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  {userId ? (
+                    <Link href={`/profile/${userId}`} style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textDecoration: 'none',
+                      color: 'white',
+                    }}>
+                      {userName || 'Я'}
+                    </Link>
+                  ) : (
+                    userName || 'Я'
+                  )}
                 </div>
               </>
             ) : (

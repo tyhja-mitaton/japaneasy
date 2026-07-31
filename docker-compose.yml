@@ -13,11 +13,14 @@ services:
       - NODE_OPTIONS=--max-old-space-size=4096
 
   laravel:
-    build: ./backend
+    build:
+      context: ./backend
+      target: dev
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/var/www
+      - ./backend/docker/php.dev.ini:/usr/local/etc/php/conf.d/custom.ini:ro
     depends_on:
       - postgres
       - redis
@@ -31,7 +34,9 @@ services:
       - NLP_SERVICE_URL=http://nlp:8001
 
   nlp:
-    build: ./nlp-service
+    build:
+      context: ./nlp-service
+      target: dev
     ports:
       - "8001:8001"
     volumes:

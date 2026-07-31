@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi } from '@/lib/auth-api';
+import { authApi, notifyAuthChanged } from '@/lib/auth-api';
 
 export default function Page() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function Page() {
     try {
       const data = await authApi.login(form);
       localStorage.setItem('token', data.token);
+      notifyAuthChanged();
       router.push('/texts');
     } catch (err: unknown) {
       const error = err as { email_verified?: boolean; message?: string };

@@ -1,5 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+export const AUTH_CHANGED_EVENT = 'japaneasy:auth-changed';
+
+export function notifyAuthChanged() {
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
 async function apiFetch(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
   const res = await fetch(`${API_URL}${path}`, {

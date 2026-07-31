@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -11,6 +12,14 @@ type StatusContent = {
 };
 
 export default function VerifiedPage() {
+    return (
+        <Suspense fallback={null}>
+            <VerifiedContent />
+        </Suspense>
+    );
+}
+
+function VerifiedContent() {
     const params = useSearchParams();
     const status = params.get('status');
 

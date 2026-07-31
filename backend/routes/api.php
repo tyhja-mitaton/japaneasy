@@ -66,12 +66,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vocabulary',              [VocabularyController::class, 'index']);
     Route::post('/vocabulary',             [VocabularyController::class, 'store']);
     Route::delete('/vocabulary/{vocabularyItem}', [VocabularyController::class, 'destroy']);
-    Route::get('/vocabulary/export/anki', [VocabularyController::class, 'exportAnki']);
+    Route::get('/vocabulary/export/anki',  [VocabularyController::class, 'exportAnki']);
+    Route::get('/vocabulary/export/csv',   [VocabularyController::class, 'exportCsv']);
 
     // Тексты
     Route::get('/texts',                   [UserTextController::class, 'index']);
     Route::post('/texts',                  [UserTextController::class, 'store']);
     Route::get('/texts/{userText}',        [UserTextController::class, 'show']);
+    Route::put('/texts/{userText}',        [UserTextController::class, 'update']);
     Route::delete('/texts/{userText}',     [UserTextController::class, 'destroy']);
     Route::post('/texts/{userText}/tokenize', [UserTextController::class, 'tokenize']);
     Route::post('/texts/{userText}/grammar',  [UserTextController::class, 'grammar']);
@@ -94,3 +96,4 @@ Route::middleware('auth:sanctum')->group(function () {
         // будущие маршруты администрирования
     });
 });
+
