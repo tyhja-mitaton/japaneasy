@@ -22,20 +22,118 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 
 type MarkdownComponent = React.ComponentType<{ children: string }>;
 
+const inputStyle: React.CSSProperties = {
+    width: '100%',
+    border: '1px solid #EDE8E1',
+    borderRadius: 12,
+    padding: '14px 16px',
+    fontSize: 15,
+    fontFamily: "'Noto Sans JP', sans-serif",
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    color: '#1A1A1A',
+    background: 'white',
+};
+
+const monoInputStyle: React.CSSProperties = {
+    ...inputStyle,
+    fontFamily: 'monospace',
+    fontSize: 14,
+};
+
+type MarkdownEditorProps = {
+    name: string;
+    label: string;
+    value: string;
+    placeholder: string;
+    required?: boolean;
+    preview: boolean;
+    onTogglePreview: () => void;
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+};
+
+function MarkdownEditorField({ name, label, value, placeholder, required, preview, onTogglePreview, onChange }: MarkdownEditorProps) {
+    return (
+        <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#1A1A1A',
+                }}>
+                    {label}
+                </label>
+                <button
+                    type="button"
+                    onClick={onTogglePreview}
+                    style={{
+                        fontSize: 13,
+                        color: '#2563EB',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#1D4ED8'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#2563EB'}
+                >
+                    {preview ? 'Редактировать' : 'Предпросмотр'}
+                </button>
+            </div>
+
+            {preview ? (
+                <div style={{
+                    border: '1px solid #EDE8E1',
+                    borderRadius: 12,
+                    padding: 20,
+                    minHeight: 320,
+                    background: 'white',
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                    fontSize: 15,
+                    lineHeight: 1.8,
+                    color: '#1A1A1A',
+                }}>
+                    <MarkdownPreview text={value} />
+                </div>
+            ) : (
+                <textarea
+                    name={name}
+                    required={required}
+                    value={value}
+                    onChange={onChange}
+                    rows={18}
+                    placeholder={placeholder}
+                    style={{
+                        ...monoInputStyle,
+                        minHeight: 320,
+                        resize: 'vertical',
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#2563EB'}
+                    onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+                />
+            )}
+        </div>
+    );
+}
+
 // Этот компонент используется и для создания, и для редактирования.
 // Если props.articleId передан — режим редактирования.
 export default function GrammarArticleForm({ articleId }: { articleId?: number }) {
     const router = useRouter();
-    const [form, setForm] = useState({ title: '', code: '', info: '', text: '', pattern: '' });
+    const [form, setForm] = useState({ title: '', code: '', info: '', text: '', pattern: '', title_en: '', info_en: '', text_en: '' });
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [preview, setPreview] = useState(false);
+    const [previewEn, setPreviewEn] = useState(false);
     const isEdit = !!articleId;
 
     useEffect(() => {
         if (!isEdit) return;
         apiFetch(`/api/admin/grammar-articles/${articleId}`)
-            .then(a => setForm({ title: a.title, code: a.code, info: a.info ?? '', text: a.text, pattern: a.pattern ?? '' }))
+            .then(a => setForm({ title: a.title, code: a.code, info: a.info ?? '', text: a.text, pattern: a.pattern ?? '',
+                title_en: a.title_en, info_en: a.info_en, text_en: a.text_en }))
             .catch(() => router.push('/admin/grammar'));
     }, [articleId, isEdit, router]);
 
@@ -68,27 +166,8 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
         }
     };
 
-    const inputStyle: React.CSSProperties = {
-        width: '100%',
-        border: '1px solid #EDE8E1',
-        borderRadius: 12,
-        padding: '14px 16px',
-        fontSize: 15,
-        fontFamily: "'Noto Sans JP', sans-serif",
-        outline: 'none',
-        transition: 'border-color 0.2s',
-        color: '#1A1A1A',
-        background: 'white',
-    };
-
-    const monoInputStyle: React.CSSProperties = {
-        ...inputStyle,
-        fontFamily: 'monospace',
-        fontSize: 14,
-    };
-
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '48px 24px' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '48px 24px' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
                 <div>
@@ -192,6 +271,28 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                         </div>
                     </div>
 
+                    {/* Title (EN) */}
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{
+                            display: 'block',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: '#1A1A1A',
+                            marginBottom: 8,
+                        }}>
+                            Заголовок (EN)
+                        </label>
+                        <input
+                            name="title_en"
+                            value={form.title_en}
+                            onChange={handleChange}
+                            placeholder="Particle は"
+                            style={inputStyle}
+                            onFocus={e => e.target.style.borderColor = '#2563EB'}
+                            onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+                        />
+                    </div>
+
                     {/* Pattern */}
                     <div style={{ marginBottom: 20 }}>
                         <label style={{
@@ -236,68 +337,50 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                         />
                     </div>
 
-                    {/* Markdown editor */}
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <label style={{
-                                display: 'block',
-                                fontSize: 14,
-                                fontWeight: 500,
-                                color: '#1A1A1A',
-                            }}>
-                                Текст статьи (Markdown)
-                            </label>
-                            <button
-                                type="button"
-                                onClick={() => setPreview(p => !p)}
-                                style={{
-                                    fontSize: 13,
-                                    color: '#2563EB',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    transition: 'color 0.2s',
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#1D4ED8'}
-                                onMouseLeave={e => e.currentTarget.style.color = '#2563EB'}
-                            >
-                                {preview ? 'Редактировать' : 'Предпросмотр'}
-                            </button>
-                        </div>
-
-                        {preview ? (
-                            <div style={{
-                                border: '1px solid #EDE8E1',
-                                borderRadius: 12,
-                                padding: 20,
-                                minHeight: 320,
-                                background: 'white',
-                                fontFamily: "'Noto Sans JP', sans-serif",
-                                fontSize: 15,
-                                lineHeight: 1.8,
-                                color: '#1A1A1A',
-                            }}>
-                                <MarkdownPreview text={form.text} />
-                            </div>
-                        ) : (
-                            <textarea
-                                name="text"
-                                required
-                                value={form.text}
-                                onChange={handleChange}
-                                rows={18}
-                                placeholder={`## Частица は\n\nは (wa) — частица темы в японском языке...\n\n### Использование\n\n- Паттерн: \`X は Y です\`\n- Пример: 私は学生です。`}
-                                style={{
-                                    ...monoInputStyle,
-                                    minHeight: 320,
-                                    resize: 'vertical',
-                                }}
-                                onFocus={e => e.target.style.borderColor = '#2563EB'}
-                                onBlur={e => e.target.style.borderColor = '#EDE8E1'}
-                            />
-                        )}
+                    {/* Info (EN) */}
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{
+                            display: 'block',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: '#1A1A1A',
+                            marginBottom: 8,
+                        }}>
+                            Краткое описание (EN)
+                        </label>
+                        <input
+                            name="info_en"
+                            value={form.info_en}
+                            onChange={handleChange}
+                            placeholder="Short description of the pattern"
+                            style={inputStyle}
+                            onFocus={e => e.target.style.borderColor = '#2563EB'}
+                            onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+                        />
                     </div>
+
+                    {/* Markdown editor (RU) */}
+                    <MarkdownEditorField
+                        name="text"
+                        label="Текст статьи (Markdown)"
+                        value={form.text}
+                        placeholder={`## Частица は\n\nは (wa) — частица темы в японском языке...\n\n### Использование\n\n- Паттерн: \`X は Y です\`\n- Пример: 私は学生です。`}
+                        required
+                        preview={preview}
+                        onTogglePreview={() => setPreview(p => !p)}
+                        onChange={handleChange}
+                    />
+
+                    {/* Markdown editor (EN) */}
+                    <MarkdownEditorField
+                        name="text_en"
+                        label="Текст статьи EN (Markdown)"
+                        value={form.text_en}
+                        placeholder={`## Particle は\n\nは (wa) is the topic particle in Japanese...\n\n### Usage\n\n- Pattern: \`X は Y です\`\n- Example: 私は学生です。`}
+                        preview={previewEn}
+                        onTogglePreview={() => setPreviewEn(p => !p)}
+                        onChange={handleChange}
+                    />
 
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

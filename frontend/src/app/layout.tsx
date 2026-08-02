@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,9 +35,11 @@ export default function RootLayout({
         <style>{`
           * { box-sizing: border-box; margin: 0; padding: 0; }
         `}</style>
-        <Navbar />
-        <main style={{ flex: 1 }}>{children}</main>
-        <Footer />
+        <I18nProvider>
+          <Navbar />
+          <main style={{ flex: 1 }}>{children}</main>
+          <Footer />
+        </I18nProvider>
       </body>
     </html>
   );

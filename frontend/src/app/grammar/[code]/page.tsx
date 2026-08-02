@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -16,11 +17,12 @@ type Article = {
 export default function GrammarArticlePage() {
     const { code } = useParams<{ code: string }>();
     const router = useRouter();
+    const { lang } = useI18n();
     const [article, setArticle] = useState<Article | null>(null);
     const [notFound, setNotFound] = useState(false);
 
     useEffect(() => {
-        fetch(`${API_URL}/api/grammar-articles/${code}`, {
+        fetch(`${API_URL}/api/grammar-articles/${code}?lang=${lang}`, {
             headers: { Accept: 'application/json' },
         })
             .then(res => {
@@ -28,7 +30,7 @@ export default function GrammarArticlePage() {
                 return res.json();
             })
             .then(data => { if (data) setArticle(data); });
-    }, [code]);
+    }, [code, lang]);
 
     if (notFound) return (
         <div style={{

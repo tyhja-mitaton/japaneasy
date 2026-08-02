@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminSettingsController;
 use App\Http\Controllers\Api\Admin\GrammarArticleController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DictionaryController;
+use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\UserTextController;
 use App\Http\Controllers\Api\VocabularyController;
@@ -51,6 +52,9 @@ Route::get('/auth/verify-email/{id}/{hash}', function (Request $request, $id, $h
     $request->user()->sendEmailVerificationNotification();
     return response()->json(['message' => 'Verification link sent.']);
 })->middleware('auth:sanctum');*/
+
+// Определение языка по IP — публичный
+Route::get('/detect-language', [LanguageController::class, 'detect']);
 
 // Тарифы — публичные (чтобы неавторизованные видели цены)
 Route::get('/plans', [PaymentController::class, 'plans']);

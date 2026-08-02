@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -27,6 +28,7 @@ export default function Page() {
   const [texts, setTexts] = useState<TextMeta[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     apiFetch('/api/texts').then(setTexts).catch(() => router.push('/auth/login'));
@@ -64,7 +66,7 @@ export default function Page() {
           textTransform: 'uppercase',
           marginBottom: 10,
         }}>
-          Мои тексты
+            {t.texts.title}
         </div>
         <h1 style={{
           fontFamily: "'Noto Serif JP'",
@@ -72,7 +74,7 @@ export default function Page() {
           fontWeight: 700,
           color: '#1A1A1A',
         }}>
-          Загружайте и изучайте
+            {t.texts.learn}
         </h1>
       </div>
 
@@ -88,7 +90,7 @@ export default function Page() {
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Вставьте японский текст здесь…"
+            placeholder={t.texts.placeholder}
             rows={6}
             style={{
               width: '100%',
@@ -137,7 +139,7 @@ export default function Page() {
               }}
             >
               <span>📄</span>
-              {loading ? 'Сохранение…' : 'Анализировать текст'}
+              {loading ? t.texts.saving : t.texts.analyze}
             </button>
           </div>
         </form>
@@ -154,12 +156,12 @@ export default function Page() {
             textTransform: 'uppercase',
             marginBottom: 16,
           }}>
-            Сохранённые тексты ({texts.length})
+              {t.texts.saved} ({texts.length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {texts.map(t => (
+            {texts.map(tt => (
               <div
-                key={t.id}
+                key={tt.id}
                 style={{
                   background: 'white',
                   borderRadius: 16,
@@ -181,7 +183,7 @@ export default function Page() {
                 }}
               >
                 <button
-                  onClick={() => router.push(`/texts/${t.id}`)}
+                  onClick={() => router.push(`/texts/${tt.id}`)}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -197,13 +199,13 @@ export default function Page() {
                     color: '#1A1A1A',
                     marginBottom: 4,
                   }}>
-                    {t.title}
+                    {tt.title}
                   </div>
                   <div style={{
                     fontSize: 13,
                     color: '#8B7355',
                   }}>
-                    {new Date(t.created_at).toLocaleDateString('ru-RU', {
+                    {new Date(tt.created_at).toLocaleDateString('ru-RU', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric',
@@ -211,7 +213,7 @@ export default function Page() {
                   </div>
                 </button>
                 <button
-                  onClick={() => handleDelete(t.id)}
+                  onClick={() => handleDelete(tt.id)}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -224,7 +226,7 @@ export default function Page() {
                   onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
                   onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                 >
-                  Удалить
+                    {t.texts.delete}
                 </button>
               </div>
             ))}
@@ -245,7 +247,7 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Нет сохранённых текстов
+              {t.texts.noTexts}
           </div>
           <div style={{
             fontSize: 14,

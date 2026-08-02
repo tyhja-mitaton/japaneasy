@@ -16,7 +16,7 @@ class GrammarArticleController extends Controller
 
         $articles = GrammarArticle::with('author:id,name')
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['id', 'title', 'code', 'info', 'pattern', 'author_id', 'created_at', 'updated_at'], 'page', $page);
+            ->paginate($perPage, ['id', 'title', 'title_en', 'code', 'info', 'info_en', 'pattern', 'author_id', 'created_at', 'updated_at'], 'page', $page);
 
         return response()->json([
             'data' => $articles->items(),
@@ -34,23 +34,32 @@ class GrammarArticleController extends Controller
         return response()->json($grammarArticle->load('author:id,name'));
     }
 
-    public function showByCode(string $code): JsonResponse
+    /**
+     * Публичный эндпоинт — возвращает статью на нужном языке.
+     * Язык берётся из: 1) query param ?lang=en  2) заголовка Accept-Language  3) ru по умолчанию
+     */
+    public function showByCode(Request $request, string $code): JsonResponse
     {
         $article = GrammarArticle::where('code', $code)
             ->with('author:id,name')
             ->firstOrFail();
 
-        return response()->json($article);
+        $lang = $this->resolveLanguage($request);
+
+        return response()->json($this->localizedArticle($article, $lang));
     }
 
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'title_en' => ['nullable', 'string', 'max:255'],
             'code'  => ['required', 'string', 'max:100', 'unique:grammar_articles,code', 'regex:/^[a-z0-9\-]+$/'],
             'pattern' => ['required', 'string', 'max:100'],
             'info'  => ['nullable', 'string', 'max:500'],
+            'info_en'  => ['nullable', 'string', 'max:500'],
             'text'  => ['required', 'string'],
+            'text_en'  => ['nullable', 'string'],
         ]);
 
         $article = GrammarArticle::create([
@@ -65,11 +74,14 @@ class GrammarArticleController extends Controller
     {
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
+            'title_en' => ['nullable', 'string', 'max:255'],
             'code'  => ['sometimes', 'string', 'max:100', 'regex:/^[a-z0-9\-]+$/',
                         "unique:grammar_articles,code,{$grammarArticle->id}"],
             'pattern' => ['required', 'string', 'max:100'],
             'info'  => ['nullable', 'string', 'max:500'],
+            'info_en'  => ['nullable', 'string', 'max:500'],
             'text'  => ['sometimes', 'string'],
+            'text_en'  => ['nullable', 'string'],
         ]);
 
         $grammarArticle->update($data);
@@ -83,4 +95,42 @@ class GrammarArticleController extends Controller
 
         return response()->json(['message' => 'Article deleted.']);
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function resolveLanguage(Request $request): string
+    {
+        // 1. Явный query param
+        if ($request->query('lang') === 'en') return 'en';
+        if ($request->query('lang') === 'ru') return 'ru';
+
+        // 2. Язык авторизованного пользователя
+        if ($request->user()?->language) {
+            return $request->user()->language;
+        }
+
+        // 3. Accept-Language заголовок
+        $acceptLang = $request->header('Accept-Language', 'ru');
+        return str_starts_with($acceptLang, 'en') ? 'en' : 'ru';
+    }
+
+    private function localizedArticle(GrammarArticle $article, string $lang): array
+    {
+        $useEn = $lang === 'en';
+
+        return [
+            'id'              => $article->id,
+            'code'            => $article->code,
+            'pattern'         => $article->pattern,
+            'title'           => ($useEn && $article->title_en) ? $article->title_en : $article->title,
+            'info'            => ($useEn && $article->info_en)  ? $article->info_en  : $article->info,
+            'text'            => ($useEn && $article->text_en)  ? $article->text_en  : $article->text,
+            'has_translation' => (bool) $article->text_en,
+            'language_used'   => ($useEn && $article->text_en) ? 'en' : 'ru',
+            'author'          => $article->author,
+            'created_at'      => $article->created_at,
+            'updated_at'      => $article->updated_at,
+        ];
+    }
+
 }

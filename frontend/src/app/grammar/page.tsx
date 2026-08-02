@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 type Article = {
   id: number; title: string; code: string;
   info: string | null;
+  title_en: string | null;
+  info_en: string | null;
 };
 
 type Meta = {
@@ -21,6 +24,7 @@ const GREEN = '#2D5A3D';
 
 export default function GrammarIndexPage() {
   const router = useRouter();
+  const { lang } = useI18n();
   const [articles, setArticles] = useState<Article[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
@@ -94,7 +98,12 @@ export default function GrammarIndexPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {articles.map(a => (
+          {articles.map(a => {
+            const isEn = lang === 'en';
+            const title = isEn && a.title_en ? a.title_en : a.title;
+            const info = isEn && a.info_en ? a.info_en : a.info;
+
+            return (
             <button
               key={a.id}
               onClick={() => router.push(`/grammar/${a.code}`)}
@@ -129,7 +138,7 @@ export default function GrammarIndexPage() {
                   color: '#1A1A1A',
                   marginBottom: 6,
                 }}>
-                  {a.title}
+                  {title}
                 </div>
                 <div style={{
                   display: 'flex',
@@ -147,7 +156,7 @@ export default function GrammarIndexPage() {
                   }}>
                     {a.code}
                   </span>
-                  {a.info && (
+                  {info && (
                     <span style={{
                       fontSize: 13,
                       color: '#8B7355',
@@ -156,7 +165,7 @@ export default function GrammarIndexPage() {
                       whiteSpace: 'nowrap',
                       maxWidth: 420,
                     }}>
-                      {a.info}
+                      {info}
                     </span>
                   )}
                 </div>
@@ -168,7 +177,8 @@ export default function GrammarIndexPage() {
                 marginLeft: 16,
               }}>→</span>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 

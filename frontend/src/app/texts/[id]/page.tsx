@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -91,6 +92,7 @@ function colorForCode(code: string): string {
 export default function TextAnalyzerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { lang } = useI18n();
 
   const [text, setText] = useState<{ id: number; content: string; title: string } | null>(null);
   const [mode, setMode] = useState<Mode>('translation');
@@ -174,12 +176,12 @@ export default function TextAnalyzerPage() {
   const handleGrammarClick = useCallback(async (match: GrammarMatch) => {
     setSelectedGrammar({ grammar_code: match.grammar_code, surface: match.surface });
     try {
-      const article = await apiFetch(`/api/grammar-articles/${match.grammar_code}`);
+      const article = await apiFetch(`/api/grammar-articles/${match.grammar_code}?lang=${lang}`);
       setSelectedGrammar(prev => prev ? { ...prev, article } : prev);
     } catch {
       // Статья не найдена
     }
-  }, []);
+  }, [lang]);
 
   // ── Добавить/убрать из словаря ────────────────────────────────────────────
   const toggleVocabulary = async () => {

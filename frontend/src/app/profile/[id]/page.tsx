@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -48,13 +50,6 @@ type VocabItem = {
 
 type Tab = 'texts' | 'vocabulary' | 'subscription' | 'settings';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'texts', label: 'Мои тексты' },
-  { key: 'vocabulary', label: 'Словарь' },
-  { key: 'subscription', label: 'Подписка' },
-  { key: 'settings', label: 'Настройки' },
-];
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -66,6 +61,7 @@ function formatDate(iso: string): string {
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useI18n();
 
   const [me, setMe] = useState<Me | null>(null);
   const [tab, setTab] = useState<Tab>('texts');
@@ -80,6 +76,12 @@ export default function ProfilePage() {
 
   const [vocabulary, setVocabulary] = useState<VocabItem[]>([]);
   const [now, setNow] = useState(0);
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'texts', label: t.texts.title },
+    { key: 'vocabulary', label: t.vocabulary.title },
+    { key: 'subscription', label: t.plans.subscription },
+    { key: 'settings', label: t.settings.title },
+  ];
 
   useEffect(() => {
     Promise.all([apiFetch('/api/auth/me'), apiFetch('/api/texts'), apiFetch('/api/vocabulary')])
@@ -771,46 +773,19 @@ export default function ProfilePage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: 16,
+              gap: 16,
+              flexWrap: 'wrap',
             }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A' }}>
-                  Язык интерфейса
+                  {t.settings.language}
                 </div>
                 <div style={{ fontSize: 13, color: '#8B7355', marginTop: 4 }}>
-                  Скоро будет доступно
+                  {t.settings.languageHint}
                 </div>
               </div>
-              <span style={{
-                background: 'rgba(232,96,74,0.1)',
-                color: '#E8604A',
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '4px 12px',
-                borderRadius: 20,
-                letterSpacing: '0.05em',
-              }}>
-                СКОРО
-              </span>
+              <LanguageSwitcher />
             </div>
-            <select
-              disabled
-              defaultValue="ru"
-              style={{
-                width: '100%',
-                border: '1px solid #EDE8E1',
-                borderRadius: 10,
-                padding: '12px 14px',
-                fontSize: 14,
-                color: '#8B7355',
-                background: '#F7F3EE',
-                outline: 'none',
-              }}
-            >
-              <option value="ru">Русский</option>
-              <option value="en">English</option>
-              <option value="ja">日本語</option>
-            </select>
           </div>
 
           <div style={{
