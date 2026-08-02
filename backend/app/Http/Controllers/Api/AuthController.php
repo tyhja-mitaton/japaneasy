@@ -49,9 +49,10 @@ class AuthController extends Controller
         $data = $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
+            'country'  => ['nullable', 'string', 'size:2'],
         ]);
 
-        if (! Auth::attempt($data)) {
+        if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password']])) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
@@ -69,6 +70,7 @@ class AuthController extends Controller
         $user->update([
             'last_login_at' => now(),
             'last_login_ip' => $request->ip(),
+            'country'       => $user->country ?? ($data['country'] ?? null),
         ]);
 
         $user->tokens()->delete();

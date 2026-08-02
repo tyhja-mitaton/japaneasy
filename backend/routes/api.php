@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminSettingsController;
 use App\Http\Controllers\Api\Admin\GrammarArticleController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DictionaryController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\UserTextController;
 use App\Http\Controllers\Api\VocabularyController;
 use Illuminate\Http\Request;
@@ -49,9 +52,22 @@ Route::get('/auth/verify-email/{id}/{hash}', function (Request $request, $id, $h
     return response()->json(['message' => 'Verification link sent.']);
 })->middleware('auth:sanctum');*/
 
+// Тарифы — публичные (чтобы неавторизованные видели цены)
+Route::get('/plans', [PaymentController::class, 'plans']);
+
 // ── Грамматические статьи (публичные — для чтения) ────────────────────────────
 Route::get('/grammar-articles',       [GrammarArticleController::class, 'index']);
 Route::get('/grammar-articles/{code}', [GrammarArticleController::class, 'showByCode']);
+
+// ── Вебхуки (без auth, но с проверкой подписи внутри) ────────────────────────
+Route::post('/webhooks/robokassa', [PaymentController::class, 'webhookRobokassa'])
+    ->name('webhook.robokassa')
+    ->withoutMiddleware(['throttle']);
+
+Route::post('/webhooks/prodamus',  [PaymentController::class, 'webhookProdamus'])
+    ->name('webhook.prodamus')
+    ->withoutMiddleware(['throttle']);
+
 
 // ── Защищённые маршруты ───────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -81,6 +97,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Словарный поиск
     Route::post('/dictionary/lookup', [DictionaryController::class, 'lookup']);
 
+    // Платежи
+    Route::post('/payments/initiate',             [PaymentController::class, 'initiate']);
+    Route::get('/payments/{payment}/status',      [PaymentController::class, 'status']);
+
     // Только для manager и administrator
     Route::middleware('role:manager|administrator')->group(function () {
         Route::get('admin/grammar-articles', [GrammarArticleController::class, 'index']);
@@ -88,6 +108,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('admin/grammar-articles/{grammarArticle}', [GrammarArticleController::class, 'show']);
         Route::put('admin/grammar-articles/{grammarArticle}', [GrammarArticleController::class, 'update']);
         Route::delete('admin/grammar-articles/{grammarArticle}', [GrammarArticleController::class, 'destroy']);
+
+        // Настройки
+        Route::get('admin/settings',  [AdminSettingsController::class, 'index']);
+        Route::post('admin/settings', [AdminSettingsController::class, 'update']);
+
+        // Дашборд со статистикой
+        Route::get('admin/dashboard', [AdminDashboardController::class, 'index']);
+
     });
 
 

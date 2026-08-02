@@ -8,6 +8,9 @@ import { authApi, notifyAuthChanged, AUTH_CHANGED_EVENT } from '@/lib/auth-api';
 type UserInfo = {
   id?: number;
   name?: string;
+  plan?: string;
+  is_premium?: boolean;
+  roles?: string[];
 };
 
 export default function Navbar() {
@@ -15,6 +18,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
 
@@ -29,6 +34,8 @@ export default function Navbar() {
       const token = localStorage.getItem('token');
       if (!token) {
         setIsLoggedIn(false);
+        setIsPremium(false);
+        setIsAdmin(false);
         setUserName('');
         setUserId(null);
         return;
@@ -37,12 +44,17 @@ export default function Navbar() {
       authApi.me()
         .then((user: UserInfo) => {
           setIsLoggedIn(true);
+          setIsPremium(!!user.is_premium);
+          setIsAdmin(Array.isArray(user.roles)
+            && (user.roles.includes('administrator') || user.roles.includes('manager')));
           setUserName(user.name?.charAt(0) || 'Я');
           setUserId(user.id ?? null);
         })
         .catch(() => {
           localStorage.removeItem('token');
           setIsLoggedIn(false);
+          setIsPremium(false);
+          setIsAdmin(false);
           setUserName('');
           setUserId(null);
         });
@@ -64,6 +76,8 @@ export default function Navbar() {
       localStorage.removeItem('token');
       notifyAuthChanged();
       setIsLoggedIn(false);
+      setIsPremium(false);
+      setIsAdmin(false);
       setUserName('');
       setUserId(null);
       router.push('/');
@@ -75,6 +89,7 @@ export default function Navbar() {
         { label: 'Тексты', href: '/texts' },
         { label: 'Грамматика', href: '/grammar' },
         { label: 'Словарь', href: '/vocabulary' },
+        ...(isAdmin ? [{ label: 'Админ-панель', href: '/admin/dashboard' }] : []),
       ]
     : [
         { label: 'Главная', href: '/' },
@@ -184,6 +199,25 @@ export default function Navbar() {
           <div className="nav-links-desktop" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {isLoggedIn ? (
               <>
+                {isPremium ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(45,90,61,0.1)',
+                    color: '#2D5A3D',
+                    borderRadius: 50,
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}>
+                    ⭐ Premium
+                  </span>
+                ) : (
+                  <Link href="/#pricing" className="nav-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span>⭐</span> Улучшить план
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="nav-btn-outline"
@@ -256,6 +290,16 @@ export default function Navbar() {
           ))}
           {isLoggedIn ? (
             <>
+              {!isPremium && (
+                <Link
+                  href="/#pricing"
+                  className="nav-btn-primary"
+                  style={{ width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span>⭐</span> Улучшить план
+                </Link>
+              )}
               <button
                 onClick={() => { handleLogout(); setMenuOpen(false); }}
                 className="nav-btn-outline"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -20,7 +21,15 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   return res.json();
 }
 
-type Me = { id: number; name: string; email: string };
+type Me = {
+  id: number;
+  name: string;
+  email: string;
+  plan?: string;
+  subscription_period?: string | null;
+  subscription_ends_at?: string | null;
+  is_premium?: boolean;
+};
 
 type TextMeta = { id: number; title: string; created_at: string };
 
@@ -37,11 +46,12 @@ type VocabItem = {
   created_at: string;
 };
 
-type Tab = 'texts' | 'vocabulary' | 'settings';
+type Tab = 'texts' | 'vocabulary' | 'subscription' | 'settings';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'texts', label: 'Мои тексты' },
   { key: 'vocabulary', label: 'Словарь' },
+  { key: 'subscription', label: 'Подписка' },
   { key: 'settings', label: 'Настройки' },
 ];
 
@@ -69,6 +79,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
 
   const [vocabulary, setVocabulary] = useState<VocabItem[]>([]);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
     Promise.all([apiFetch('/api/auth/me'), apiFetch('/api/texts'), apiFetch('/api/vocabulary')])
@@ -76,6 +87,7 @@ export default function ProfilePage() {
         setMe(user);
         setTexts(userTexts);
         setVocabulary(vocab);
+        setNow(Date.now());
         if (String(user.id) !== id) {
           router.replace(`/profile/${user.id}`);
         }
@@ -174,6 +186,25 @@ export default function ProfilePage() {
   }
 
   const initial = (me?.name || 'Я').charAt(0).toUpperCase();
+
+  const FEATURES_BY_PLAN: Record<string, string[]> = {
+    standard: ['До 50 текстов в месяц', 'Расширенный словарь', 'Все упражнения', 'Аудио и видео с субтитрами'],
+    premium: ['Неограниченная загрузка текстов', 'Полный доступ ко всем функциям', 'Персональная статистика', 'Приоритетная поддержка'],
+  };
+
+  const subscriptionActive =
+    !!me?.plan
+    && me.plan !== 'free'
+    && !!me.subscription_ends_at
+    && new Date(me.subscription_ends_at).getTime() > now;
+
+  const planLabel = subscriptionActive
+    ? me?.plan === 'premium' ? 'Premium' : me?.plan === 'standard' ? 'Standard' : 'Free'
+    : 'Free';
+
+  const features = subscriptionActive
+    ? FEATURES_BY_PLAN[me?.plan ?? ''] ?? []
+    : ['Загрузка до 5 текстов в месяц', 'Базовый словарь (до 100 слов)', 'Ограниченный доступ к упражнениям'];
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 24px' }}>
@@ -607,6 +638,123 @@ export default function ProfilePage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Подписка ────────────────────────────────────────────────────── */}
+      {tab === 'subscription' && (
+        <div>
+          <div style={{
+            background: 'white',
+            borderRadius: 20,
+            border: '1px solid #EDE8E1',
+            overflow: 'hidden',
+          }}>
+            {/* Шапка тарифа */}
+            <div style={{
+              padding: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              borderBottom: '1px solid #EDE8E1',
+            }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 6 }}>
+                  Текущий тариф
+                </div>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: subscriptionActive ? 'rgba(45,90,61,0.1)' : 'rgba(139,115,85,0.1)',
+                  color: subscriptionActive ? '#2D5A3D' : '#8B7355',
+                  borderRadius: 50,
+                  padding: '6px 14px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}>
+                  {subscriptionActive ? '✓ ' : ''}{planLabel}
+                </div>
+              </div>
+              <Link
+                href="/#pricing"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#E8604A',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 50,
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  transition: 'background 0.2s, transform 0.15s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#D14A35';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = '#E8604A';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {subscriptionActive ? 'Изменить тариф' : 'Выбрать тариф'}
+              </Link>
+            </div>
+
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Действует до */}
+              <div>
+                <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 4 }}>
+                  Подписка действует до
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A' }}>
+                  {subscriptionActive && me?.subscription_ends_at
+                    ? formatDate(me.subscription_ends_at)
+                    : '—'}
+                </div>
+              </div>
+
+              {/* Возможности */}
+              <div>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#8B7355',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  marginBottom: 12,
+                }}>
+                  Возможности тарифа
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {features.map(f => (
+                    <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: '#555', lineHeight: 1.5 }}>
+                      <span style={{ color: '#E8604A', flexShrink: 0 }}>✓</span>
+                      {f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: 16,
+            background: 'rgba(139,115,85,0.06)',
+            borderRadius: 14,
+            padding: '16px 20px',
+            fontSize: 13,
+            color: '#8B7355',
+            lineHeight: 1.6,
+          }}>
+            💡 После оплаты доступ к платным тарифам активируется автоматически. Если оплата прошла, но тариф не обновился — напишите нам.
+          </div>
         </div>
       )}
 

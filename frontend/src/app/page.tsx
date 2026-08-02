@@ -1,6 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 // #F7F3EE — тёплый молочный фон
@@ -10,7 +14,116 @@ import Link from 'next/link';
 // #D4C5B0 — бежевый (разделители, фоны карточек)
 // #2D5A3D — тёмно-зелёный (навигация, тихие акценты)
 
+type Plan = { id: string; name: string; price: number; currency: string; features: string[] };
+
+type Me = {
+  plan?: string;
+  subscription_period?: string | null;
+  subscription_ends_at?: string | null;
+  is_premium?: boolean;
+};
+
+// Периоды оплаты — зеркалит расчёт на бэкенде (PaymentController::initiate)
+const PERIODS = [
+  { id: '1m',  label: '1 месяц',   months: 1,  discount: 0.00 },
+  { id: '3m',  label: '3 месяца',  months: 3,  discount: 0.05 },
+  { id: '6m',  label: '6 месяцев', months: 6,  discount: 0.10 },
+  { id: '12m', label: '12 месяцев', months: 12, discount: 0.15 },
+] as const;
+
+type PeriodId = typeof PERIODS[number]['id'];
+
+const PLAN_COLORS: Record<string, string> = {
+  free: '#8B7355',
+  standard: '#2D5A3D',
+  premium: '#E8604A',
+};
+
 export default function Page() {
+  const router = useRouter();
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [periodId, setPeriodId] = useState<PeriodId>('1m');
+  const [checkingOut, setCheckingOut] = useState<string | null>(null);
+  const [plansError, setPlansError] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
+  const [selectedPlan, setSelectedPlan] = useState<string>('premium');
+
+  const period = PERIODS.find(p => p.id === periodId)!;
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/plans`, { headers: { Accept: 'application/json' } })
+      .then(res => res.json())
+      .then(data => {
+        setPlans(data.plans ?? []);
+        setNow(Date.now());
+      })
+      .catch(() => setPlansError('Не удалось загрузить тарифы'));
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          setMe(data);
+          if (data) {
+            const hasActivePaid = !!data.plan
+              && data.plan !== 'free'
+              && !!data.subscription_ends_at
+              && new Date(data.subscription_ends_at).getTime() > Date.now();
+            setSelectedPlan(hasActivePaid ? data.plan : 'free');
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const priceFor = (base: number) => Math.round(base * period.months * (1 - period.discount));
+
+  const formatPrice = (n: number) => n.toLocaleString('ru-RU') + ' ₽';
+
+  const hasActivePaid =
+    !!me?.plan
+    && me.plan !== 'free'
+    && !!me.subscription_ends_at
+    && new Date(me.subscription_ends_at).getTime() > now;
+
+  const currentPlanId = hasActivePaid ? (me?.plan ?? 'free') : 'free';
+
+  const startCheckout = async (planId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+
+    setCheckingOut(planId);
+    setPlansError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/payments/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan: planId, period: periodId }),
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        router.push('/auth/login');
+        return;
+      }
+      if (!res.ok) throw new Error('initiate failed');
+
+      const data = await res.json();
+      window.location.assign(data.redirect_url);
+    } catch {
+      setPlansError('Не удалось начать оплату. Попробуйте ещё раз.');
+      setCheckingOut(null);
+    }
+  };
+
   return (
     <div>
 
@@ -68,10 +181,10 @@ export default function Page() {
           border-radius: 24px;
           padding: 32px 28px;
           border: 1.5px solid #EDE8E1;
-          transition: box-shadow 0.25s;
+          transition: box-shadow 0.25s, border-color 0.25s;
           position: relative;
         }
-        .plan-card.featured {
+        .plan-card.selected {
           border-color: #E8604A;
           box-shadow: 0 4px 24px rgba(232,96,74,0.12);
         }
@@ -323,8 +436,8 @@ export default function Page() {
       </section>
 
       {/* ── Pricing ───────────────────────────────────────────────────────── */}
-      <section style={{ padding: '80px max(24px, calc(50vw - 640px)) 96px' }}>
-        <div style={{ marginBottom: 48, textAlign: 'center' }}>
+      <section id="pricing" style={{ padding: '80px max(24px, calc(50vw - 640px)) 96px' }}>
+        <div style={{ marginBottom: 32, textAlign: 'center' }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#E8604A', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
             Тарифы
           </div>
@@ -333,6 +446,74 @@ export default function Page() {
           </h2>
         </div>
 
+        {/* Период оплаты */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: 32,
+        }}>
+          <div style={{
+            display: 'inline-flex',
+            background: 'white',
+            border: '1px solid #EDE8E1',
+            borderRadius: 50,
+            padding: 4,
+            gap: 2,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+          }}>
+            {PERIODS.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setPeriodId(p.id)}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 50,
+                  border: 'none',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: periodId === p.id ? '#E8604A' : 'transparent',
+                  color: periodId === p.id ? 'white' : '#8B7355',
+                }}
+                onMouseEnter={e => {
+                  if (periodId !== p.id) {
+                    e.currentTarget.style.background = 'rgba(232,96,74,0.08)';
+                    e.currentTarget.style.color = '#E8604A';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (periodId !== p.id) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#8B7355';
+                  }
+                }}
+              >
+                {p.label}
+                {p.discount > 0 && (
+                  <span style={{ opacity: 0.85 }}>{` −${Math.round(p.discount * 100)}%`}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {plansError && (
+          <div style={{
+            maxWidth: 520,
+            margin: '0 auto 24px',
+            textAlign: 'center',
+            padding: '12px 16px',
+            borderRadius: 12,
+            background: 'rgba(232,96,74,0.08)',
+            color: '#D14A35',
+            fontSize: 14,
+          }}>
+            {plansError}
+          </div>
+        )}
+
         <div className="plans-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -340,68 +521,81 @@ export default function Page() {
           maxWidth: 900,
           margin: '0 auto',
         }}>
-          {/* Free */}
-          <div className="plan-card">
-            <div style={{ marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#8B7355', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Free</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-              <span style={{ fontSize: 36, fontWeight: 700, color: '#1A1A1A' }}>0 ₽</span>
-            </div>
-            <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 28 }}>/ месяц</div>
-            <div style={{ borderTop: '1px solid #EDE8E1', paddingTop: 24, marginBottom: 28 }}>
-              {['Загрузка до 5 текстов в месяц', 'Базовый словарь (до 100 слов)', 'Ограниченный доступ к упражнениям'].map(f => (
-                <div key={f} className="check-item"><span className="check-icon">✓</span>{f}</div>
-              ))}
-            </div>
-            <button style={{
-              width: '100%', padding: '13px', borderRadius: 50,
-              border: '1.5px solid #EDE8E1', background: 'transparent',
-              fontSize: 14, fontWeight: 600, color: '#8B7355', cursor: 'default',
-            }}>
-              Текущий план
-            </button>
-          </div>
+          {plans.map(plan => {
+            const color = PLAN_COLORS[plan.id] || '#8B7355';
+            const selected = selectedPlan === plan.id;
+            const isCurrentPlan = currentPlanId === plan.id;
+            const price = priceFor(plan.price);
+            const perMonth = Math.round(plan.price * (1 - period.discount));
 
-          {/* Standard */}
-          <div className="plan-card">
-            <div style={{ marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#2D5A3D', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Standart</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-              <span style={{ fontSize: 36, fontWeight: 700, color: '#1A1A1A' }}>490 ₽</span>
-            </div>
-            <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 28 }}>/ месяц</div>
-            <div style={{ borderTop: '1px solid #EDE8E1', paddingTop: 24, marginBottom: 28 }}>
-              {['Загрузка до 50 текстов в месяц', 'Расширенный словарь', 'Все упражнения', 'Аудио и видео с субтитрами'].map(f => (
-                <div key={f} className="check-item"><span className="check-icon">✓</span>{f}</div>
-              ))}
-            </div>
-            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              Выбрать план
-            </button>
-          </div>
+            return (
+              <div
+                key={plan.id}
+                className={`plan-card${selected ? ' selected' : ''}`}
+                onClick={() => setSelectedPlan(plan.id)}
+                style={{ cursor: 'pointer' }}
+              >
+                {plan.id === 'premium' && (
+                  <div style={{
+                    position: 'absolute', top: -12, right: 20,
+                    background: '#E8604A', color: 'white',
+                    borderRadius: 50, width: 36, height: 36,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16,
+                  }}>⭐</div>
+                )}
+                <div style={{ marginBottom: 4, fontSize: 13, fontWeight: 600, color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {plan.name}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
+                  <span style={{ fontSize: 36, fontWeight: 700, color: '#1A1A1A' }}>
+                    {formatPrice(price)}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 28 }}>
+                  {period.months > 1
+                    ? `за ${period.months} ${period.months === 3 ? 'месяца' : period.months === 12 ? 'месяцев' : 'месяцев'} · ≈ ${formatPrice(perMonth)}/мес`
+                    : '/ месяц'}
+                </div>
+                <div style={{ borderTop: '1px solid #EDE8E1', paddingTop: 24, marginBottom: 28 }}>
+                  {plan.features.map(f => (
+                    <div key={f} className="check-item"><span className="check-icon">✓</span>{f}</div>
+                  ))}
+                </div>
 
-          {/* Premium */}
-          <div className="plan-card featured">
-            {/* Бейдж */}
-            <div style={{
-              position: 'absolute', top: -12, right: 20,
-              background: '#E8604A', color: 'white',
-              borderRadius: 50, width: 36, height: 36,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16,
-            }}>⭐</div>
-            <div style={{ marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#E8604A', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Premium</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-              <span style={{ fontSize: 36, fontWeight: 700, color: '#1A1A1A' }}>990 ₽</span>
-            </div>
-            <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 28 }}>/ месяц</div>
-            <div style={{ borderTop: '1px solid #EDE8E1', paddingTop: 24, marginBottom: 28 }}>
-              {['Неограниченная загрузка текстов', 'Полный доступ ко всем функциям', 'Персональная статистика', 'Приоритетная поддержка'].map(f => (
-                <div key={f} className="check-item"><span className="check-icon">✓</span>{f}</div>
-              ))}
-            </div>
-            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              Выбрать план
-            </button>
-          </div>
+                {isCurrentPlan ? (
+                  <button style={{
+                    width: '100%', padding: '13px', borderRadius: 50,
+                    border: '1.5px solid #EDE8E1', background: 'transparent',
+                    fontSize: 14, fontWeight: 600,
+                    color: plan.id === 'free' ? '#8B7355' : '#2D5A3D',
+                    cursor: 'default',
+                  }}>
+                    {plan.id === 'free' ? 'Текущий план' : '✓ Ваш план'}
+                  </button>
+                ) : (
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      if (plan.id === 'free') {
+                        setSelectedPlan(plan.id);
+                        return;
+                      }
+                      startCheckout(plan.id);
+                    }}
+                    disabled={checkingOut !== null}
+                    style={{
+                      width: '100%', justifyContent: 'center',
+                      background: checkingOut === plan.id ? '#D4C5B0' : '#E8604A',
+                      cursor: checkingOut !== null ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {checkingOut === plan.id ? 'Переход к оплате…' : 'Выбрать план'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>

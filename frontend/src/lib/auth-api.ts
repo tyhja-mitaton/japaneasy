@@ -26,7 +26,7 @@ export const authApi = {
   register: (body: { name: string; email: string; password: string; password_confirmation: string; country?: string }) =>
     apiFetch('/api/auth/register', { method: 'POST', body: JSON.stringify(body) }),
 
-  login: (body: { email: string; password: string }) =>
+  login: (body: { email: string; password: string; country?: string }) =>
     apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify(body) }),
 
   logout: () =>

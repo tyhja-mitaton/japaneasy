@@ -1,17 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authApi } from '@/lib/auth-api';
+import { detectCountry } from '@/lib/detect-country';
 
 export default function Page() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: '', email: '', password: '', password_confirmation: '',
+    country: undefined as string | undefined,
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    detectCountry().then(country => {
+      if (country) setForm(prev => ({ ...prev, country }));
+    });
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
