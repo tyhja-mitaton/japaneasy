@@ -58,6 +58,7 @@ function FailContent() {
         )}
         <Link
           href="/#pricing"
+          className="link-hover-bg-coral"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -71,14 +72,6 @@ function FailContent() {
             fontWeight: 600,
             textDecoration: 'none',
             transition: 'background 0.2s, transform 0.15s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = '#D14A35';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = '#E8604A';
-            e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
           Попробовать снова

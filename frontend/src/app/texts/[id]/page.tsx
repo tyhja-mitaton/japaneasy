@@ -104,6 +104,7 @@ export default function TextAnalyzerPage() {
   const [loading, setLoading] = useState(true);
   const [nlpLoading, setNlpLoading] = useState(false);
   const [showFurigana, setShowFurigana] = useState(false);
+  const [vocabError, setVocabError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -186,24 +187,35 @@ export default function TextAnalyzerPage() {
   // ── Добавить/убрать из словаря ────────────────────────────────────────────
   const toggleVocabulary = async () => {
     if (!selectedWord) return;
-    if (selectedWord.inVocabulary && selectedWord.vocabId) {
-      await apiFetch(`/api/vocabulary/${selectedWord.vocabId}`, { method: 'DELETE' });
-      setVocabulary(prev => prev.filter(v => v.id !== selectedWord.vocabId));
-      setSelectedWord(prev => prev ? { ...prev, inVocabulary: false, vocabId: undefined } : prev);
-    } else {
-      const item = await apiFetch('/api/vocabulary', {
-        method: 'POST',
-        body: JSON.stringify({
-          surface:        selectedWord.surface,
-          base_form:      selectedWord.base_form,
-          reading:        selectedWord.reading,
-          pos:            selectedWord.pos,
-          translation:    selectedWord.translation,
-          source_text_id: text?.id,
-        }),
-      });
-      setVocabulary(prev => [...prev, { id: item.id, base_form: item.base_form }]);
-      setSelectedWord(prev => prev ? { ...prev, inVocabulary: true, vocabId: item.id } : prev);
+    setVocabError(null);
+    try {
+      if (selectedWord.inVocabulary && selectedWord.vocabId) {
+        await apiFetch(`/api/vocabulary/${selectedWord.vocabId}`, { method: 'DELETE' });
+        setVocabulary(prev => prev.filter(v => v.id !== selectedWord.vocabId));
+        setSelectedWord(prev => prev ? { ...prev, inVocabulary: false, vocabId: undefined } : prev);
+      } else {
+        const item = await apiFetch('/api/vocabulary', {
+          method: 'POST',
+          body: JSON.stringify({
+            surface:        selectedWord.surface,
+            base_form:      selectedWord.base_form,
+            reading:        selectedWord.reading,
+            pos:            selectedWord.pos,
+            translation:    selectedWord.translation,
+            source_text_id: text?.id,
+          }),
+        });
+        setVocabulary(prev => [...prev, { id: item.id, base_form: item.base_form }]);
+        setSelectedWord(prev => prev ? { ...prev, inVocabulary: true, vocabId: item.id } : prev);
+      }
+    } catch (err: unknown) {
+      const e422 = err as { message?: string | string[]; errors?: Record<string, string[]> };
+      const msg = Array.isArray(e422?.message)
+        ? e422.message[0]
+        : e422?.errors
+          ? Object.values(e422.errors).flat()[0]
+          : e422?.message;
+      setVocabError(msg || 'Не удалось изменить словарь.');
     }
   };
 
@@ -433,7 +445,7 @@ export default function TextAnalyzerPage() {
           <div
               style={{
                 lineHeight: showFurigana ? 2.5 : 1.8,
-                fontSize: showFurigana ? 15 : 17,
+                fontSize: showFurigana ? 16 : 17,
                 userSelect: 'none',
               }}
           >
@@ -529,6 +541,20 @@ export default function TextAnalyzerPage() {
                 >
                   {selectedWord.inVocabulary ? '✓ В словаре' : '+ Добавить в словарь'}
                 </button>
+                {vocabError && (
+                    <div style={{
+                      marginTop: 12,
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(232,96,74,0.08)',
+                      border: '1px solid rgba(232,96,74,0.25)',
+                      color: '#D14A35',
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                    }}>
+                      {vocabError}
+                    </div>
+                )}
               </div>
           )}
 
@@ -582,6 +608,7 @@ export default function TextAnalyzerPage() {
                             textDecoration: 'none',
                             fontWeight: 500,
                           }}
+                          target="_blank"
                       >
                         Читать полностью →
                       </a>

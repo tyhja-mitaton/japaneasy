@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\PlanLimits;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -147,6 +148,22 @@ class AuthController extends Controller
             'timezone'             => $user->timezone,
             'last_login_at'        => $user->last_login_at?->toISOString(),
             'email_verified'       => $user->hasVerifiedEmail(),
+            'usage'                => $this->usageResource($user),
+        ];
+    }
+
+    private function usageResource(User $user): array
+    {
+        return [
+            'texts'      => [
+                'used'         => PlanLimits::textsUsed($user),
+                'limit'        => PlanLimits::textsLimit($user),
+                'period_start' => PlanLimits::textsWindowStart($user)->toISOString(),
+            ],
+            'vocabulary' => [
+                'used'  => PlanLimits::vocabularyCount($user),
+                'limit' => PlanLimits::vocabularyLimit($user),
+            ],
         ];
     }
 }

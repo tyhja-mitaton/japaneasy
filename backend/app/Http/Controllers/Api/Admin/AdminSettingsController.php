@@ -54,6 +54,12 @@ class AdminSettingsController extends Controller
                 continue;
             }
 
+            // Лимиты тарифов — только неотрицательные числа (0 = безлимит)
+            if (preg_match('/^limit_(texts|vocab)_(free|standard|premium)$/', $key)
+                && (!ctype_digit((string) $value))) {
+                continue;
+            }
+
             Setting::set($key, $value);
         }
 

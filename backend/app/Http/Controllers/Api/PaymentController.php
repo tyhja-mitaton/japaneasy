@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\Payment\PaymentManager;
+use App\Services\PlanLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -17,34 +18,45 @@ class PaymentController extends Controller
 {
     public function __construct(private PaymentManager $paymentManager) {}
 
-    // ── Доступные тарифы с актуальными ценами ─────────────────────────────────
+    // ── Доступные тарифы с актуальными ценами и лимитами ──────────────────────
     public function plans(): JsonResponse
     {
         return response()->json([
             'plans' => [
-                [
-                    'id'       => 'free',
-                    'name'     => 'Free',
-                    'price'    => 0,
-                    'currency' => 'RUB',
-                    'features' => ['До 5 текстов в месяц', 'Базовый словарь (100 слов)', 'Ограниченный доступ'],
-                ],
-                [
-                    'id'       => 'standard',
-                    'name'     => 'Standard',
-                    'price'    => (int) Setting::get('plan_standard_price', 300),
-                    'currency' => 'RUB',
-                    'features' => ['До 50 текстов в месяц', 'Расширенный словарь', 'Все упражнения', 'Аудио/видео с субтитрами'],
-                ],
-                [
-                    'id'       => 'premium',
-                    'name'     => 'Premium',
-                    'price'    => (int) Setting::get('plan_premium_price', 490),
-                    'currency' => 'RUB',
-                    'features' => ['Неограниченная загрузка', 'Полный доступ', 'Персональная статистика', 'Приоритетная поддержка'],
-                ],
+                $this->planResource('free',     'Free',     0),
+                $this->planResource('standard', 'Standard', (int) Setting::get('plan_standard_price', 300)),
+                $this->planResource('premium',  'Premium',  (int) Setting::get('plan_premium_price', 490)),
             ],
         ]);
+    }
+
+    private function planResource(string $id, string $name, int $price): array
+    {
+        $limits = PlanLimits::limitsForPlan($id);
+
+        $features = [];
+        if ($limits['texts'] !== null) {
+            $features[] = "До {$limits['texts']} текстов в месяц";
+        } else {
+            $features[] = 'Безлимит текстов в месяц';
+        }
+        if ($limits['vocabulary'] !== null) {
+            $features[] = "Словарь до {$limits['vocabulary']} слов";
+        } else {
+            $features[] = 'Безлимитный словарь';
+        }
+
+        return [
+            'id'       => $id,
+            'name'     => $name,
+            'price'    => $price,
+            'currency' => 'RUB',
+            'features' => $features,
+            'limits'   => [
+                'texts'      => $limits['texts'],
+                'vocabulary' => $limits['vocabulary'],
+            ],
+        ];
     }
 
     // ── Инициировать платёж ───────────────────────────────────────────────────

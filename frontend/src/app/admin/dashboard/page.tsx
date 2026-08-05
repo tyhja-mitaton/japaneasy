@@ -179,16 +179,34 @@ export default function AdminPage() {
 
   const sections = [
     {
+      href: '/admin/users',
+      icon: '👥',
+      title: 'Пользователи',
+      desc: 'Управление аккаунтами, ролями и подписками',
+    },
+    {
+      href: '/admin/dictionaries',
+      icon: '📚',
+      title: 'Словари',
+      desc: 'Импорт, активация и приоритеты словарей',
+    },
+    {
       href: '/admin/grammar',
       icon: '📝',
       title: 'Грамматические статьи',
       desc: 'Создание и редактирование статей по грамматике',
     },
     {
+      href: '/admin/feedback',
+      icon: '💬',
+      title: 'Обратная связь',
+      desc: 'Запросы пользователей и ответы на них',
+    },
+    {
       href: '/admin/settings',
       icon: '⚙️',
       title: 'Настройки',
-      desc: 'Платёжные системы, тарифы, налоги',
+      desc: 'Платёжные системы, тарифы, налоги, лимиты',
     },
   ];
 
@@ -482,14 +500,7 @@ export default function AdminPage() {
                 textDecoration: 'none',
                 transition: 'box-shadow 0.2s, border-color 0.2s',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.06)';
-                e.currentTarget.style.borderColor = '#BFDBFE';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.borderColor = '#EDE8E1';
-              }}
+              className="dashboard-section-link"
             >
               <div style={{
                 width: 44, height: 44, borderRadius: 12,

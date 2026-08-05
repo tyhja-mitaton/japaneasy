@@ -90,4 +90,63 @@ class UserTextTest extends TestCase
         $this->putJson("/api/texts/{$text->id}", ['title' => 'Новое'])
             ->assertUnauthorized();
     }
+
+    public function test_index_returns_paginated_own_texts(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        UserText::factory()->count(25)->create(['user_id' => $user->id]);
+        UserText::factory()->create(['user_id' => $other->id, 'title' => 'Чужой текст']);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/texts');
+
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [['id', 'title', 'created_at', 'updated_at']],
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+            ]);
+
+        $this->assertSame(25, $response->json('meta.total'));
+        $this->assertSame(10, $response->json('meta.per_page'));
+        $this->assertSame(3, $response->json('meta.last_page'));
+        $this->assertCount(10, $response->json('data'));
+    }
+
+    public function test_index_can_search_by_title_and_content(): void
+    {
+        $user = User::factory()->create();
+        UserText::factory()->create(['user_id' => $user->id, 'title' => 'Дзиро в Токио', 'content' => 'a']);
+        UserText::factory()->create(['user_id' => $user->id, 'title' => 'Просто текст', 'content' => 'встреча с Ханако']);
+        UserText::factory()->create(['user_id' => $user->id, 'title' => 'Ещё один', 'content' => 'про Ханако']);
+
+        Sanctum::actingAs($user);
+
+        $byTitle = $this->getJson('/api/texts?search=Токио');
+        $byTitle->assertOk()->assertJsonCount(1, 'data');
+        $this->assertSame('Дзиро в Токио', $byTitle->json('data.0.title'));
+
+        $byContent = $this->getJson('/api/texts?search=Ханако');
+        $byContent->assertOk()->assertJsonCount(2, 'data');
+
+        $none = $this->getJson('/api/texts?search=несуществующее');
+        $none->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_index_does_not_leak_other_users_texts_in_search(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        UserText::factory()->create(['user_id' => $user->id, 'title' => 'Мой секрет', 'content' => 'c']);
+        UserText::factory()->create(['user_id' => $other->id, 'title' => 'Мой секрет 2', 'content' => 'c']);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/texts?search=секрет')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Мой секрет');
+    }
 }

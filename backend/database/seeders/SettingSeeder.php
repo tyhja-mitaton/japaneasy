@@ -18,6 +18,14 @@ class SettingSeeder extends Seeder
             ['key' => 'plan_standard_price',    'value' => '300',        'description' => 'Цена Standard (руб/мес)'],
             ['key' => 'plan_premium_price',     'value' => '490',        'description' => 'Цена Premium (руб/мес)'],
 
+            // ── Лимиты тарифов (0 = безлимит) ─────────────────────────────
+            ['key' => 'limit_texts_free',       'value' => '5',           'description' => 'Free: текстов в месяц (0 = безлимит)'],
+            ['key' => 'limit_texts_standard',   'value' => '50',          'description' => 'Standard: текстов в месяц (0 = безлимит)'],
+            ['key' => 'limit_texts_premium',    'value' => '0',           'description' => 'Premium: текстов в месяц (0 = безлимит)'],
+            ['key' => 'limit_vocab_free',       'value' => '100',         'description' => 'Free: слов в словаре (0 = безлимит)'],
+            ['key' => 'limit_vocab_standard',   'value' => '1000',        'description' => 'Standard: слов в словаре (0 = безлимит)'],
+            ['key' => 'limit_vocab_premium',    'value' => '0',           'description' => 'Premium: слов в словаре (0 = безлимит)'],
+
             // ── Налоги (для перехода на ИП) ───────────────────────────────
             ['key' => 'vat_enabled',            'value' => '0',          'description' => 'НДС включён (0 для самозанятого, 1 для ИП на ОСН)'],
             ['key' => 'vat_rate',               'value' => '20',         'description' => 'Ставка НДС в процентах'],

@@ -96,6 +96,7 @@ export default function Page() {
         }}>
           <Link
             href="/auth/login"
+            className="link-hover-bg-coral"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -109,14 +110,6 @@ export default function Page() {
               fontWeight: 600,
               textDecoration: 'none',
               transition: 'background 0.2s, transform 0.15s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = '#D14A35';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = '#E8604A';
-              e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
             Войти в аккаунт

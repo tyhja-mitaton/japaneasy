@@ -168,14 +168,13 @@ export default function Page() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
               <Link
                 href="/auth/forgot-password"
+                className="link-hover-text-coral"
                 style={{
                   fontSize: 14,
                   color: '#8B7355',
                   textDecoration: 'none',
                   transition: 'color 0.2s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
-                onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
               >
                 Забыли пароль?
               </Link>

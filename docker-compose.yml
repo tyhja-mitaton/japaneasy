@@ -75,12 +75,17 @@ services:
     ports:
       - "8025:8025"   # веб-интерфейс
       - "1025:1025"   # SMTP
-#  queue-worker:
-#    build: ./backend
-#    command: php artisan queue:work
-#    depends_on:
-#      - laravel
-#      - redis
+  queue-imports:
+    build: ./backend
+    command: php artisan queue:work database --queue=imports --timeout=600 --memory=512
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/var/www
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
 
 volumes:
   postgres_data:

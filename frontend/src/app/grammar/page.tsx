@@ -29,16 +29,25 @@ export default function GrammarIndexPage() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   useEffect(() => {
-    fetch(`${API_URL}/api/grammar-articles?page=${page}`, {
+    const qs = new URLSearchParams({ page: String(page) });
+    if (search) qs.set('search', search);
+    fetch(`${API_URL}/api/grammar-articles?${qs.toString()}`, {
       headers: { Accept: 'application/json' },
     })
       .then(res => res.json())
       .then(res => { setArticles(res.data ?? []); setMeta(res.meta ?? null); })
       .catch(() => setArticles([]))
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [page, search]);
+
+  const runSearch = () => {
+    setPage(1);
+    setSearch(searchInput.trim());
+  };
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
@@ -72,6 +81,55 @@ export default function GrammarIndexPage() {
         </p>
       </div>
 
+      {/* Search */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <input
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runSearch(); }}
+          placeholder="Поиск по названию или коду…"
+          style={{
+            width: '100%',
+            maxWidth: 360,
+            border: '1px solid #EDE8E1',
+            borderRadius: 12,
+            padding: '10px 14px',
+            fontSize: 14,
+            fontFamily: "'Noto Sans JP', sans-serif",
+            outline: 'none',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+            color: '#1A1A1A',
+            background: 'white',
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = GREEN; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(45,90,61,0.12)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.boxShadow = 'none'; }}
+        />
+        <button
+          onClick={runSearch}
+          style={{
+            background: GREEN, color: 'white', border: 'none', borderRadius: 50,
+            padding: '10px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'inherit', transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#244D33'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = GREEN; }}
+        >
+          Найти
+        </button>
+        {search && (
+          <button
+            onClick={() => { setSearch(''); setSearchInput(''); }}
+            style={{
+              background: 'none', border: '1.5px solid #EDE8E1', borderRadius: 50,
+              padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Сбросить
+          </button>
+        )}
+      </div>
+
       {/* Articles list */}
       {loading ? (
         <div style={{ fontSize: 14, color: '#8B7355', padding: '24px 0' }}>Загрузка…</div>
@@ -90,10 +148,10 @@ export default function GrammarIndexPage() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Нет статей
+            {search ? 'Ничего не найдено' : 'Нет статей'}
           </div>
           <div style={{ fontSize: 14, color: '#8B7355' }}>
-            Статьи появятся здесь после публикации
+            {search ? 'Попробуйте изменить поисковый запрос' : 'Статьи появятся здесь после публикации'}
           </div>
         </div>
       ) : (

@@ -12,9 +12,22 @@ class GrammarArticleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = 10;
-        $page = $request->input('page', 1);
+        $page    = $request->input('page', 1);
+        $search  = mb_strtolower(trim((string) $request->input('search', '')));
 
-        $articles = GrammarArticle::with('author:id,name')
+        $articles = GrammarArticle::query()
+            ->with('author:id,name')
+            ->when($search !== '', function ($query) use ($search) {
+                $like = "%{$search}%";
+
+                return $query->where(function ($query) use ($like) {
+                    $query->whereRaw('LOWER(title) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(title_en) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(code) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(info) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(info_en) LIKE ?', [$like]);
+                });
+            })
             ->orderBy('created_at', 'desc')
             ->paginate($perPage, ['id', 'title', 'title_en', 'code', 'info', 'info_en', 'pattern', 'author_id', 'created_at', 'updated_at'], 'page', $page);
 

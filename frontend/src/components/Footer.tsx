@@ -20,7 +20,17 @@ export default function Footer() {
       <div style={{ fontSize: 13, color: '#8B7355' }}>
         継続は力なり — Настойчивость — это сила
       </div>
-      <div style={{ fontSize: 12, color: '#D4C5B0' }}>© 2026 Nihongo</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <Link href="/feedback" className="link-hover-text-coral" style={{
+          fontSize: 13,
+          color: '#8B7355',
+          textDecoration: 'none',
+          transition: 'color 0.2s',
+        }}>
+          Обратная связь
+        </Link>
+        <div style={{ fontSize: 12, color: '#D4C5B0' }}>© {new Date().getFullYear()} JapanEasy</div>
+      </div>
     </footer>
   );
 }

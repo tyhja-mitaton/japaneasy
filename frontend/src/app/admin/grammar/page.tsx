@@ -39,13 +39,21 @@ export default function Page() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   useEffect(() => {
-    apiFetch(`/api/admin/grammar-articles?page=${page}`)
+    const qs = new URLSearchParams({ page: String(page) });
+    if (search) qs.set('search', search);
+    apiFetch(`/api/admin/grammar-articles?${qs.toString()}`)
       .then(res => { setArticles(res.data ?? []); setMeta(res.meta ?? null); })
       .catch(() => router.push('/auth/login'));
-  }, [page, router]);
+  }, [page, search, router]);
+
+  const runSearch = () => {
+    setPage(1);
+    setSearch(searchInput.trim());
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить эту статью?')) return;
@@ -84,6 +92,7 @@ export default function Page() {
         </div>
         <Link
           href="/admin/grammar/create"
+          className="link-hover-bg-blue"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -98,17 +107,57 @@ export default function Page() {
             textDecoration: 'none',
             transition: 'background 0.2s, transform 0.15s',
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = '#1D4ED8';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = '#2563EB';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
         >
           <span>+</span> Новая статья
         </Link>
+      </div>
+
+      {/* Search */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <input
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runSearch(); }}
+          placeholder="Поиск по названию или коду…"
+          style={{
+            width: '100%',
+            maxWidth: 360,
+            border: '1px solid #EDE8E1',
+            borderRadius: 12,
+            padding: '10px 14px',
+            fontSize: 14,
+            fontFamily: "'Noto Sans JP', sans-serif",
+            outline: 'none',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+            color: '#1A1A1A',
+            background: 'white',
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.boxShadow = 'none'; }}
+        />
+        <button
+          onClick={runSearch}
+          style={{
+            background: '#2563EB', color: 'white', border: 'none', borderRadius: 50,
+            padding: '10px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#1D4ED8'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#2563EB'; }}
+        >
+          Найти
+        </button>
+        {search && (
+          <button
+            onClick={() => { setSearch(''); setSearchInput(''); }}
+            style={{
+              background: 'none', border: '1.5px solid #EDE8E1', borderRadius: 50,
+              padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
+            }}
+          >
+            Сбросить
+          </button>
+        )}
       </div>
 
       {/* Articles list */}
@@ -127,33 +176,35 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Нет статей
+            {search ? 'Ничего не найдено' : 'Нет статей'}
           </div>
           <div style={{
             fontSize: 14,
             color: '#8B7355',
             marginBottom: 24,
           }}>
-            Создайте первую грамматическую статью
+            {search ? 'Попробуйте изменить поисковый запрос' : 'Создайте первую грамматическую статью'}
           </div>
-          <Link
-            href="/admin/grammar/create"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: '#2563EB',
-              color: 'white',
-              border: 'none',
-              borderRadius: 50,
-              padding: '12px 24px',
-              fontSize: 14,
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            Создать статью
-          </Link>
+          {!search && (
+            <Link
+              href="/admin/grammar/create"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#2563EB',
+                color: 'white',
+                border: 'none',
+                borderRadius: 50,
+                padding: '12px 24px',
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Создать статью
+            </Link>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -238,6 +289,7 @@ export default function Page() {
               }}>
                 <Link
                   href={`/admin/grammar/${a.id}/edit`}
+                  className="link-hover-bg-blue-soft"
                   style={{
                     fontSize: 14,
                     color: '#2563EB',
@@ -246,8 +298,6 @@ export default function Page() {
                     borderRadius: 8,
                     transition: 'background 0.2s',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   Редактировать
                 </Link>

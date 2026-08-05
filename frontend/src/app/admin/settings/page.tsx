@@ -35,6 +35,14 @@ const GROUPS = [
     keys: ['plan_standard_price', 'plan_premium_price'],
   },
   {
+    title: 'Лимиты тарифов',
+    hint: '0 = безлимит. Тексты — в месяц; для платных тарифов отсчёт от даты подписки.',
+    keys: [
+      'limit_texts_free', 'limit_texts_standard', 'limit_texts_premium',
+      'limit_vocab_free', 'limit_vocab_standard', 'limit_vocab_premium',
+    ],
+  },
+  {
     title: 'Налоги',
     keys: ['business_type', 'vat_enabled', 'vat_rate'],
   },
@@ -297,6 +305,11 @@ export default function AdminSettingsPage() {
                 }}>
                   {group.title}
                 </h2>
+                {group.hint && (
+                  <div style={{ fontSize: 12, color: '#8B7355', marginTop: 4 }}>
+                    {group.hint}
+                  </div>
+                )}
               </div>
               <div style={{ borderTop: '1px solid #F3EFE9' }}>
                 {groupSettings.map((key, idx) => {
@@ -305,6 +318,7 @@ export default function AdminSettingsPage() {
                   const isPassword = PASSWORD_FIELDS.has(key);
                   const isPrice = key.includes('_price');
                   const isVatRate = key === 'vat_rate';
+                  const isLimit = key.includes('_limit_');
 
                   return (
                     <div
@@ -341,10 +355,11 @@ export default function AdminSettingsPage() {
                             {isPrice && <span style={{ color: '#8B7355', fontSize: 14 }}>₽</span>}
                             {isVatRate && <span style={{ color: '#8B7355', fontSize: 14 }}>%</span>}
                             <input
-                              type={isPassword ? 'password' : isPrice || isVatRate ? 'number' : 'text'}
+                              type={isPassword ? 'password' : isPrice || isVatRate || isLimit ? 'number' : 'text'}
                               value={s.value}
                               onChange={e => setValue(key, e.target.value)}
                               placeholder={s.masked ? '••••••••' : ''}
+                              min={isLimit ? 0 : undefined}
                               style={{
                                 ...fieldStyle,
                                 fontFamily: isPassword ? 'monospace' : "'Noto Sans JP', sans-serif",
@@ -353,6 +368,15 @@ export default function AdminSettingsPage() {
                               onFocus={e => { e.currentTarget.style.borderColor = BLUE; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; }}
                               onBlur={e => { e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.boxShadow = 'none'; }}
                             />
+                            {isLimit && (
+                              <span style={{
+                                flexShrink: 0, fontSize: 11, fontWeight: 600,
+                                color: '#8B7355', background: 'rgba(139,115,85,0.08)',
+                                padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+                              }}>
+                                {key.includes('texts') ? 'текстов' : 'слов'}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>

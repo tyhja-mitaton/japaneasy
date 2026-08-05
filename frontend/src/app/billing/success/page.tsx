@@ -154,6 +154,7 @@ function SuccessContent() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Link
                 href="/texts"
+                className="link-hover-bg-coral"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -168,14 +169,6 @@ function SuccessContent() {
                   fontWeight: 600,
                   textDecoration: 'none',
                   transition: 'background 0.2s, transform 0.15s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = '#D14A35';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = '#E8604A';
-                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
                 Перейти к текстам
@@ -212,6 +205,7 @@ function SuccessContent() {
             </p>
             <Link
               href="/#pricing"
+              className="link-hover-bg-coral"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -225,14 +219,6 @@ function SuccessContent() {
                 fontWeight: 600,
                 textDecoration: 'none',
                 transition: 'background 0.2s, transform 0.15s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#D14A35';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#E8604A';
-                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               Попробовать снова

@@ -50,6 +50,12 @@ class User extends Authenticatable implements MustVerifyEmail
             && $this->subscription_ends_at?->isFuture();
     }
 
+    public function hasActiveSubscription(): bool
+    {
+        return in_array($this->plan, ['standard', 'premium'], true)
+            && $this->subscription_ends_at?->isFuture();
+    }
+
     public function isFree(): bool
     {
         return ! $this->isPremium();

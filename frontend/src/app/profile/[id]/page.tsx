@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useI18n } from '@/lib/i18n';
+import DictionaryPreferences from "@/components/DictionaryPreferences";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -31,6 +32,19 @@ type Me = {
   subscription_period?: string | null;
   subscription_ends_at?: string | null;
   is_premium?: boolean;
+  usage?: {
+    texts: { used: number; limit: number | null; period_start: string };
+    vocabulary: { used: number; limit: number | null };
+  };
+};
+
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  features: string[];
+  limits: { texts: number | null; vocabulary: number | null };
 };
 
 type TextMeta = { id: number; title: string; created_at: string };
@@ -64,10 +78,16 @@ export default function ProfilePage() {
   const { t } = useI18n();
 
   const [me, setMe] = useState<Me | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [tab, setTab] = useState<Tab>('texts');
   const [loading, setLoading] = useState(true);
 
   const [texts, setTexts] = useState<TextMeta[]>([]);
+  const [textTotal, setTextTotal] = useState(0);
+  const [textPage, setTextPage] = useState(1);
+  const [textLastPage, setTextLastPage] = useState(1);
+  const [textSearchInput, setTextSearchInput] = useState('');
+  const [textSearch, setTextSearch] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editText, setEditText] = useState<TextFull | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -83,20 +103,31 @@ export default function ProfilePage() {
     { key: 'settings', label: t.settings.title },
   ];
 
+  const loadTexts = useCallback(async (pageNum: number, query: string) => {
+    const params = new URLSearchParams({ page: String(pageNum) });
+    if (query) params.set('search', query);
+    const data = await apiFetch(`/api/texts?${params.toString()}`);
+    setTexts(data.data);
+    setTextTotal(data.meta.total);
+    setTextPage(data.meta.current_page);
+    setTextLastPage(data.meta.last_page);
+  }, []);
+
   useEffect(() => {
-    Promise.all([apiFetch('/api/auth/me'), apiFetch('/api/texts'), apiFetch('/api/vocabulary')])
-      .then(([user, userTexts, vocab]) => {
+    Promise.all([apiFetch('/api/auth/me'), apiFetch('/api/plans'), apiFetch('/api/vocabulary')])
+      .then(([user, plansData, vocab]) => {
         setMe(user);
-        setTexts(userTexts);
+        setPlans(plansData?.plans ?? []);
         setVocabulary(vocab);
         setNow(Date.now());
         if (String(user.id) !== id) {
           router.replace(`/profile/${user.id}`);
         }
+        return loadTexts(1, '');
       })
       .catch(() => router.push('/auth/login'))
       .finally(() => setLoading(false));
-  }, [id, router]);
+  }, [id, router, loadTexts]);
 
   // ── Тексты ──────────────────────────────────────────────────────────────────
 
@@ -117,16 +148,12 @@ export default function ProfilePage() {
     if (!editText || !editContent.trim()) return;
     setSaving(true);
     try {
-      const updated = await apiFetch(`/api/texts/${editText.id}`, {
+      await apiFetch(`/api/texts/${editText.id}`, {
         method: 'PUT',
         body: JSON.stringify({ title: editTitle, content: editContent }),
       });
-      setTexts(prev => prev.map(t => (t.id === updated.id ? {
-        id: updated.id,
-        title: updated.title,
-        created_at: updated.created_at,
-      } : t)));
       cancelEdit();
+      await loadTexts(textPage, textSearch);
     } finally {
       setSaving(false);
     }
@@ -134,8 +161,24 @@ export default function ProfilePage() {
 
   const handleDeleteText = async (textId: number) => {
     await apiFetch(`/api/texts/${textId}`, { method: 'DELETE' });
-    setTexts(prev => prev.filter(t => t.id !== textId));
     if (editingId === textId) cancelEdit();
+    const newTotal = textTotal - 1;
+    if (textPage > 1 && (textPage - 1) * 10 >= newTotal) {
+      await loadTexts(textPage - 1, textSearch);
+    } else {
+      await loadTexts(textPage, textSearch);
+    }
+  };
+
+  const handleTextSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadTexts(1, textSearchInput.trim());
+  };
+
+  const clearTextSearch = () => {
+    setTextSearchInput('');
+    setTextSearch('');
+    loadTexts(1, '');
   };
 
   // ── Словарь ─────────────────────────────────────────────────────────────────
@@ -189,11 +232,6 @@ export default function ProfilePage() {
 
   const initial = (me?.name || 'Я').charAt(0).toUpperCase();
 
-  const FEATURES_BY_PLAN: Record<string, string[]> = {
-    standard: ['До 50 текстов в месяц', 'Расширенный словарь', 'Все упражнения', 'Аудио и видео с субтитрами'],
-    premium: ['Неограниченная загрузка текстов', 'Полный доступ ко всем функциям', 'Персональная статистика', 'Приоритетная поддержка'],
-  };
-
   const subscriptionActive =
     !!me?.plan
     && me.plan !== 'free'
@@ -204,9 +242,29 @@ export default function ProfilePage() {
     ? me?.plan === 'premium' ? 'Premium' : me?.plan === 'standard' ? 'Standard' : 'Free'
     : 'Free';
 
-  const features = subscriptionActive
-    ? FEATURES_BY_PLAN[me?.plan ?? ''] ?? []
-    : ['Загрузка до 5 текстов в месяц', 'Базовый словарь (до 100 слов)', 'Ограниченный доступ к упражнениям'];
+  const effectivePlanId = subscriptionActive ? (me?.plan ?? 'free') : 'free';
+  const currentPlan = plans.find(p => p.id === effectivePlanId);
+
+  const features = currentPlan?.features ?? [];
+
+  const usage = me?.usage;
+  const usageBars = usage
+    ? [
+        {
+          label: 'Тексты в месяц',
+          used: usage.texts.used,
+          limit: usage.texts.limit,
+          sub: usage.texts.period_start
+            ? `Окно с ${new Date(usage.texts.period_start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`
+            : undefined,
+        },
+        {
+          label: 'Словарь',
+          used: usage.vocabulary.used,
+          limit: usage.vocabulary.limit,
+        },
+      ]
+    : [];
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 24px' }}>
@@ -285,10 +343,91 @@ export default function ProfilePage() {
             textTransform: 'uppercase',
             marginBottom: 16,
           }}>
-            Сохранённые тексты ({texts.length})
+            Сохранённые тексты ({textTotal})
           </div>
 
-          {texts.length === 0 ? (
+          {/* Поиск */}
+          <div style={{
+            background: 'white',
+            borderRadius: 16,
+            padding: '12px 16px',
+            border: '1px solid #EDE8E1',
+            marginBottom: 16,
+          }}>
+            <form
+              onSubmit={handleTextSearch}
+              style={{ display: 'flex', gap: 12, alignItems: 'center' }}
+            >
+              <div style={{ flex: 1, position: 'relative' }}>
+                <span style={{
+                  position: 'absolute',
+                  left: 16,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: 14,
+                  color: '#B9A88F',
+                  pointerEvents: 'none',
+                }}>🔍</span>
+                <input
+                  value={textSearchInput}
+                  onChange={e => setTextSearchInput(e.target.value)}
+                  placeholder="Название или фрагмент текста…"
+                  style={{
+                    width: '100%',
+                    border: '1px solid #EDE8E1',
+                    borderRadius: 12,
+                    padding: '12px 16px 12px 42px',
+                    fontSize: 14,
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    color: '#1A1A1A',
+                    background: 'white',
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#E8604A'}
+                  onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+                />
+              </div>
+              <button
+                type="submit"
+                style={{
+                  background: '#E8604A',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 50,
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#D14A35'}
+                onMouseLeave={e => e.currentTarget.style.background = '#E8604A'}
+              >
+                Найти
+              </button>
+              {textSearch && (
+                <button
+                  type="button"
+                  onClick={clearTextSearch}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    color: '#8B7355',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
+                >
+                  Сбросить
+                </button>
+              )}
+            </form>
+          </div>
+
+          {textTotal === 0 ? (
             <div style={{
               background: 'white',
               borderRadius: 20,
@@ -296,22 +435,56 @@ export default function ProfilePage() {
               border: '2px dashed #EDE8E1',
               textAlign: 'center',
             }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>{textSearch ? '🔍' : '📄'}</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-                Нет сохранённых текстов
+                {textSearch ? 'Ничего не найдено' : 'Нет сохранённых текстов'}
               </div>
               <div style={{ fontSize: 14, color: '#8B7355' }}>
-                Добавьте текст на странице{' '}
-                <span
-                  onClick={() => router.push('/texts')}
-                  style={{ color: '#E8604A', cursor: 'pointer' }}
-                >
-                  «Мои тексты»
-                </span>
+                {textSearch ? (
+                  'Попробуйте изменить запрос'
+                ) : (
+                  <>
+                    Добавьте текст на странице{' '}
+                    <span
+                      onClick={() => router.push('/texts')}
+                      style={{ color: '#E8604A', cursor: 'pointer' }}
+                    >
+                      «Мои тексты»
+                    </span>
+                  </>
+                )}
               </div>
+              {textSearch && (
+                <button
+                  onClick={clearTextSearch}
+                  style={{
+                    marginTop: 16,
+                    background: 'none',
+                    border: '1.5px solid #E8604A',
+                    color: '#E8604A',
+                    borderRadius: 50,
+                    padding: '10px 22px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#E8604A';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.color = '#E8604A';
+                  }}
+                >
+                  Сбросить
+                </button>
+              )}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {texts.map(t => (
                 <div
                   key={t.id}
@@ -464,6 +637,55 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
+
+            {textLastPage > 1 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 16,
+                marginTop: 24,
+              }}>
+                <button
+                  onClick={() => loadTexts(textPage - 1, textSearch)}
+                  disabled={textPage <= 1}
+                  style={{
+                    background: 'white',
+                    border: '1.5px solid #D4C5B0',
+                    borderRadius: 50,
+                    padding: '10px 22px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: textPage <= 1 ? '#D4C5B0' : '#8B7355',
+                    cursor: textPage <= 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  ← Назад
+                </button>
+                <div style={{ fontSize: 14, color: '#8B7355', minWidth: 110, textAlign: 'center' }}>
+                  Страница {textPage} из {textLastPage}
+                </div>
+                <button
+                  onClick={() => loadTexts(textPage + 1, textSearch)}
+                  disabled={textPage >= textLastPage}
+                  style={{
+                    background: 'white',
+                    border: '1.5px solid #D4C5B0',
+                    borderRadius: 50,
+                    padding: '10px 22px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: textPage >= textLastPage ? '#D4C5B0' : '#8B7355',
+                    cursor: textPage >= textLastPage ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Вперёд →
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}
@@ -682,6 +904,7 @@ export default function ProfilePage() {
               </div>
               <Link
                 href="/#pricing"
+                className="link-hover-bg-coral"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -695,14 +918,6 @@ export default function ProfilePage() {
                   fontWeight: 600,
                   textDecoration: 'none',
                   transition: 'background 0.2s, transform 0.15s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = '#D14A35';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = '#E8604A';
-                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
                 {subscriptionActive ? 'Изменить тариф' : 'Выбрать тариф'}
@@ -721,6 +936,65 @@ export default function ProfilePage() {
                     : '—'}
                 </div>
               </div>
+
+              {/* Лимиты */}
+              {usageBars.length > 0 && (
+                <div>
+                  <div style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#8B7355',
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    marginBottom: 12,
+                  }}>
+                    Использовано лимитов
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {usageBars.map(bar => {
+                      const unlimited = bar.limit === null;
+                      const pct = bar.limit === null || bar.limit === 0
+                        ? 0
+                        : Math.min(100, Math.round((bar.used / bar.limit) * 100));
+                      const over = bar.limit !== null && bar.used >= bar.limit;
+                      return (
+                        <div key={bar.label}>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: 6,
+                          }}>
+                            <span style={{ fontSize: 13, color: '#1A1A1A' }}>{bar.label}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: over ? '#E8604A' : '#1A1A1A' }}>
+                              {bar.used} / {unlimited ? '∞' : bar.limit}
+                            </span>
+                          </div>
+                          <div style={{
+                            height: 8,
+                            borderRadius: 20,
+                            background: '#F3EFE9',
+                            overflow: 'hidden',
+                          }}>
+                            <div style={{
+                              width: unlimited ? '100%' : `${pct}%`,
+                              height: '100%',
+                              borderRadius: 20,
+                              background: over ? '#E8604A' : '#2D5A3D',
+                              transition: 'width 0.4s',
+                            }} />
+                          </div>
+                          {bar.sub && (
+                            <div style={{ fontSize: 12, color: '#B9A88F', marginTop: 6 }}>
+                              {bar.sub}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Возможности */}
               <div>
@@ -808,29 +1082,8 @@ export default function ProfilePage() {
                   Подключайте дополнительные словари для анализа текстов
                 </div>
               </div>
-              <span style={{
-                background: 'rgba(232,96,74,0.1)',
-                color: '#E8604A',
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '4px 12px',
-                borderRadius: 20,
-                letterSpacing: '0.05em',
-              }}>
-                СКОРО
-              </span>
             </div>
-            <div style={{
-              background: '#F7F3EE',
-              border: '2px dashed #EDE8E1',
-              borderRadius: 14,
-              padding: '20px',
-              textAlign: 'center',
-              fontSize: 14,
-              color: '#8B7355',
-            }}>
-              📖 Раздел появится в ближайших обновлениях
-            </div>
+            <DictionaryPreferences />
           </div>
         </div>
       )}

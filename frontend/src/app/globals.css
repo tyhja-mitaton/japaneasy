@@ -25,3 +25,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Hover-эффекты для <Link>: Next 16 запрещает передавать onMouseEnter/onMouseLeave
+   в Client Component (next/link), поэтому используем CSS :hover.
+   !important перекрывает инлайн-стили базового состояния. */
+.link-hover-text-coral:hover { color: #E8604A !important; }
+.link-hover-text-blue:hover { color: #2563EB !important; }
+.link-hover-bg-coral:hover { background: #D14A35 !important; transform: translateY(-1px); }
+.link-hover-bg-blue:hover { background: #1D4ED8 !important; transform: translateY(-1px); }
+.link-hover-bg-blue-soft:hover { background: rgba(59,130,246,0.08) !important; }
+.dashboard-section-link:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); border-color: #BFDBFE; }

@@ -1,12 +1,17 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminDictionaryController;
+use App\Http\Controllers\Api\Admin\AdminFeedbackController;
 use App\Http\Controllers\Api\Admin\AdminSettingsController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\GrammarArticleController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\UserDictionaryPreferenceController;
 use App\Http\Controllers\Api\UserTextController;
 use App\Http\Controllers\Api\VocabularyController;
 use Illuminate\Http\Request;
@@ -59,6 +64,10 @@ Route::get('/detect-language', [LanguageController::class, 'detect']);
 // Тарифы — публичные (чтобы неавторизованные видели цены)
 Route::get('/plans', [PaymentController::class, 'plans']);
 
+// Обратная связь — публичная (для гостей и авторизованных)
+Route::post('/feedback', [FeedbackController::class, 'store'])
+    ->middleware('throttle:5,60');
+
 // ── Грамматические статьи (публичные — для чтения) ────────────────────────────
 Route::get('/grammar-articles',       [GrammarArticleController::class, 'index']);
 Route::get('/grammar-articles/{code}', [GrammarArticleController::class, 'showByCode']);
@@ -105,6 +114,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments/initiate',             [PaymentController::class, 'initiate']);
     Route::get('/payments/{payment}/status',      [PaymentController::class, 'status']);
 
+    Route::get('/profile/dictionaries',  [UserDictionaryPreferenceController::class, 'index']);
+    Route::post('/profile/dictionaries', [UserDictionaryPreferenceController::class, 'update']);
+
     // Только для manager и administrator
     Route::middleware('role:manager|administrator')->group(function () {
         Route::get('admin/grammar-articles', [GrammarArticleController::class, 'index']);
@@ -119,6 +131,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Дашборд со статистикой
         Route::get('admin/dashboard', [AdminDashboardController::class, 'index']);
+
+        Route::get('admin/dictionaries',              [AdminDictionaryController::class, 'index']);
+        Route::get('admin/dictionaries/{dictionary}', [AdminDictionaryController::class, 'show']);
+        Route::post('admin/dictionaries/import',      [AdminDictionaryController::class, 'import']);
+        Route::put('admin/dictionaries/{dictionary}', [AdminDictionaryController::class, 'update']);
+        Route::delete('admin/dictionaries/{dictionary}', [AdminDictionaryController::class, 'destroy']);
+
+        // Пользователи
+        Route::get('admin/users',       [AdminUserController::class, 'index']);
+        Route::put('admin/users/{user}', [AdminUserController::class, 'update']);
+        Route::delete('admin/users/{user}', [AdminUserController::class, 'destroy']);
+
+        // Обратная связь
+        Route::get('admin/feedback',                       [AdminFeedbackController::class, 'index']);
+        Route::get('admin/feedback/{feedback}',            [AdminFeedbackController::class, 'show']);
+        Route::post('admin/feedback/{feedback}/reply',     [AdminFeedbackController::class, 'reply']);
+        Route::delete('admin/feedback/{feedback}',         [AdminFeedbackController::class, 'destroy']);
 
     });
 

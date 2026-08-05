@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GrammarArticle;
 use App\Models\UserText;
+use App\Services\PlanLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -13,11 +14,33 @@ class UserTextController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $texts = UserText::where('user_id', $request->user()->id)
-            ->orderBy('created_at', 'desc')
-            ->get(['id', 'title', 'created_at', 'updated_at']);
+        $search = trim((string) $request->input('search', ''));
 
-        return response()->json($texts);
+        $texts = UserText::where('user_id', $request->user()->id)
+            ->when($search !== '', function ($query) use ($search) {
+                // ILIKE на Postgres — регистронезависимо; LIKE на SQLite (тесты)
+                $op   = $query->getConnection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+                $like = "%{$search}%";
+
+                return $query->where(fn ($query) => $query
+                    ->where('title', $op, $like)
+                    ->orWhere('content', $op, $like));
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate((int) $request->input('per_page', 10), [
+                'id', 'title', 'created_at', 'updated_at',
+            ])
+            ->withQueryString();
+
+        return response()->json([
+            'data' => $texts->items(),
+            'meta' => [
+                'current_page' => $texts->currentPage(),
+                'last_page'    => $texts->lastPage(),
+                'per_page'     => $texts->perPage(),
+                'total'        => $texts->total(),
+            ],
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -26,6 +49,8 @@ class UserTextController extends Controller
             'content' => ['required', 'string', 'max:50000'],
             'title'   => ['nullable', 'string', 'max:255'],
         ]);
+
+        PlanLimits::checkTexts($request->user());
 
         // Если заголовок не передан — берём первые 50 символов текста
         $title = $data['title'] ?? mb_substr(trim($data['content']), 0, 50);

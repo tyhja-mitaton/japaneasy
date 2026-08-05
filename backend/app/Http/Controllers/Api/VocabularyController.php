@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\VocabularyItem;
+use App\Services\PlanLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -30,6 +31,8 @@ class VocabularyController extends Controller
             'context_sentence' => ['nullable', 'string', 'max:1000'],
             'source_text_id'   => ['nullable', 'integer', 'exists:user_texts,id'],
         ]);
+
+        PlanLimits::checkVocabulary($request->user(), $data['base_form']);
 
         $item = VocabularyItem::updateOrCreate(
             ['user_id' => $request->user()->id, 'base_form' => $data['base_form']],
