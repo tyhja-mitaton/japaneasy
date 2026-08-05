@@ -150,6 +150,28 @@ const translations = {
       premium:      'Premium',
       subscription:  'Подписка',
     },
+    // Видео
+    video: {
+      title:        'Видео для изучения',
+      subtitle:     'Аниме, фильмы и ролики с субтитрами для практики японского',
+      premium:      'Контент Premium',
+      back:         '← Все видео',
+      empty:        'Видео пока нет.',
+      notFound:     'Видео не найдено',
+      notFoundHint: 'Попробуйте выбрать другое видео из списка',
+      loading:      'Загрузка…',
+      // Платный доступ
+      loginTitle:   'Войдите, чтобы смотреть видео',
+      loginDesc:    'Раздел доступен только авторизованным пользователям с тарифом Premium.',
+      loginCta:     'Войти',
+      paywallTitle: 'Доступно на Premium',
+      paywallDesc:  'Видео с субтитрами и пофразовой навигацией доступны на тарифе Premium.',
+      paywallCta:   'Оформить Premium',
+      home:         'Вернуться на главную',
+      retry:        'Попробовать снова',
+      error:        'Не удалось проверить доступ',
+      errorDesc:    'Проверьте подключение и попробуйте ещё раз.',
+    },
     // Общее
     common: {
       loading:  'Загрузка…',
@@ -298,6 +320,28 @@ const translations = {
       standard: 'Standard',
       premium:  'Premium',
       subscription:  'Subscription',
+    },
+    // Видео
+    video: {
+      title:        'Video for learning',
+      subtitle:     'Anime, films and clips with subtitles for Japanese practice',
+      premium:      'Premium content',
+      back:         '← All videos',
+      empty:        'No videos yet.',
+      notFound:     'Video not found',
+      notFoundHint: 'Try picking another video from the list',
+      loading:      'Loading…',
+      // Платный доступ
+      loginTitle:   'Sign in to watch videos',
+      loginDesc:    'This section is available to signed-in users with a Premium plan.',
+      loginCta:     'Sign in',
+      paywallTitle: 'Available on Premium',
+      paywallDesc:  'Videos with subtitles and phrase-by-phrase navigation are available on the Premium plan.',
+      paywallCta:   'Get Premium',
+      home:         'Back to home',
+      retry:        'Try again',
+      error:        'Could not check access',
+      errorDesc:    'Check your connection and try again.',
     },
     common: {
       loading:  'Loading…',

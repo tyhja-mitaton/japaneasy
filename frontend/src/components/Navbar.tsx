@@ -89,6 +89,7 @@ export default function Navbar() {
         { label: 'Тексты', href: '/texts' },
         { label: 'Грамматика', href: '/grammar' },
         { label: 'Словарь', href: '/vocabulary' },
+        ...(isPremium ? [{ label: 'Видео', href: '/video' }] : []),
         ...(isAdmin ? [{ label: 'Админ-панель', href: '/admin/dashboard' }] : []),
       ]
     : [

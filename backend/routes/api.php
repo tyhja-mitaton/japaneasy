@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminDictionaryController;
 use App\Http\Controllers\Api\Admin\AdminFeedbackController;
 use App\Http\Controllers\Api\Admin\AdminSettingsController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AdminVideoController;
 use App\Http\Controllers\Api\Admin\GrammarArticleController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FeedbackController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\UserDictionaryPreferenceController;
 use App\Http\Controllers\Api\UserTextController;
+use App\Http\Controllers\Api\VideoController;
 use App\Http\Controllers\Api\VocabularyController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -80,6 +82,13 @@ Route::post('/webhooks/robokassa', [PaymentController::class, 'webhookRobokassa'
 Route::post('/webhooks/prodamus',  [PaymentController::class, 'webhookProdamus'])
     ->name('webhook.prodamus')
     ->withoutMiddleware(['throttle']);
+
+// Видео — только для Premium (админы/менеджеры могут просматривать)
+Route::middleware(['auth:sanctum', 'premium'])->group(function () {
+    Route::get('/videos',      [VideoController::class, 'index']);
+    Route::get('/videos/{video}', [VideoController::class, 'show']);
+    Route::get('/videos/{video}/subtitles/{subtitle}', [VideoController::class, 'subtitle']);
+});
 
 
 // ── Защищённые маршруты ───────────────────────────────────────────────────────
@@ -149,6 +158,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('admin/feedback/{feedback}/reply',     [AdminFeedbackController::class, 'reply']);
         Route::delete('admin/feedback/{feedback}',         [AdminFeedbackController::class, 'destroy']);
 
+        Route::get('admin/videos',                              [AdminVideoController::class, 'index']);
+        Route::post('admin/videos',                             [AdminVideoController::class, 'store']);
+        Route::get('admin/videos/{video}',                      [AdminVideoController::class, 'show']);
+        Route::post('admin/videos/{video}',                     [AdminVideoController::class, 'update']); // POST с FormData
+        Route::delete('admin/videos/{video}',                   [AdminVideoController::class, 'destroy']);
+        Route::post('admin/videos/{video}/subtitles',           [AdminVideoController::class, 'uploadSubtitle']);
+        Route::delete('admin/videos/{video}/subtitles/{subtitle}', [AdminVideoController::class, 'destroySubtitle']);
     });
 
 

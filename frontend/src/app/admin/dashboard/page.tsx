@@ -197,6 +197,12 @@ export default function AdminPage() {
       desc: 'Создание и редактирование статей по грамматике',
     },
     {
+      href: '/admin/videos',
+      icon: '🎬',
+      title: 'Видео',
+      desc: 'Загрузка видео, превью и субтитров',
+    },
+    {
       href: '/admin/feedback',
       icon: '💬',
       title: 'Обратная связь',

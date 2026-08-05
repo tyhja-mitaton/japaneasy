@@ -94,7 +94,7 @@ class DictionaryLookupTest extends TestCase
                 ['type' => 'structured-content', 'content' => [
                     'tag'     => 'ul',
                     'data'    => ['content' => 'notes'],
-                    'lang'    => 'ja',
+                    'lang'    => 'jp',
                     'content' => ['tag' => 'li', 'content' => 'occ. 奔る'],
                 ]],
                 'fallback: бежать',

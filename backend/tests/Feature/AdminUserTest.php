@@ -192,7 +192,7 @@ class AdminUserTest extends TestCase
         $dictionary = Dictionary::create([
             'name'             => 'JMdict RU',
             'slug'             => 'jmdict-ru',
-            'source_lang'      => 'ja',
+            'source_lang'      => 'jp',
             'target_lang'      => 'ru',
             'is_active'        => true,
             'default_priority' => 1,
