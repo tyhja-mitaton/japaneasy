@@ -17,14 +17,16 @@ class CompoundTokenMergeTest extends TestCase
 
     private function seedDictionaryWith(string $term, string $reading): DictionaryEntry
     {
-        $dictionary = Dictionary::create([
-            'name'             => 'JMdict (English)',
-            'slug'             => 'jmdict',
-            'source_lang'      => 'jp',
-            'target_lang'      => 'en',
-            'is_active'        => true,
-            'default_priority' => 10,
-        ]);
+        $dictionary = Dictionary::firstOrCreate(
+            ['slug' => 'jmdict'],
+            [
+                'name'             => 'JMdict (English)',
+                'source_lang'      => 'jp',
+                'target_lang'      => 'en',
+                'is_active'        => true,
+                'default_priority' => 10,
+            ]
+        );
 
         return DictionaryEntry::create([
             'dictionary_id' => $dictionary->id,
@@ -141,5 +143,92 @@ class CompoundTokenMergeTest extends TestCase
             ->assertJsonPath('tokens.0.base_form', '食べる')
             ->assertJsonPath('tokens.0.pos', '動詞')
             ->assertJsonPath('tokens.1.surface', '。');
+    }
+
+    public function test_te_shimau_is_not_grammar_merged(): void
+    {
+        // 〜てしまう — грамматическая конструкция: мерджер склеивает только
+        // словарные компаунды. «しまっ + た» склеивается словарём в «しまった»
+        // (терм 仕舞うた), а «で» остаётся отдельным токеном.
+        $this->seedDictionaryWith('仕舞うた', 'シマッタ');
+
+        $user = User::factory()->create();
+        $text = UserText::create([
+            'user_id' => $user->id,
+            'title'   => 'Test',
+            'content' => '飲んでしまった。',
+        ]);
+
+        $this->fakeNlpTokens([
+            ['surface' => '飲ん', 'base_form' => '飲む', 'reading' => 'ノン', 'pos' => '動詞',     'start' => 0, 'end' => 2],
+            ['surface' => 'で',   'base_form' => 'て',   'reading' => 'デ',   'pos' => '助詞',     'start' => 2, 'end' => 3],
+            ['surface' => 'しまっ', 'base_form' => '仕舞う', 'reading' => 'シマッ', 'pos' => '動詞', 'start' => 3, 'end' => 6],
+            ['surface' => 'た',   'base_form' => 'た',   'reading' => 'タ',   'pos' => '助動詞',   'start' => 6, 'end' => 7],
+            ['surface' => '。',   'base_form' => '。',   'reading' => '',     'pos' => '補助記号', 'start' => 7, 'end' => 8],
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/texts/{$text->id}/tokenize");
+
+        $response->assertOk()
+            ->assertJsonCount(4, 'tokens');
+
+        $this->assertSame('飲ん', $response->json('tokens.0.surface'));
+
+        $this->assertSame([
+            'surface'   => 'で',
+            'base_form' => 'て',
+            'reading'   => 'デ',
+            'pos'       => '助詞',
+            'start'     => 2,
+            'end'       => 3,
+        ], $response->json('tokens.1'));
+
+        $this->assertSame([
+            'surface'   => 'しまった',
+            'base_form' => '仕舞うた',
+            'reading'   => 'シマッタ',
+            'pos'       => '連語',
+            'start'     => 3,
+            'end'       => 7,
+        ], $response->json('tokens.2'));
+
+        $this->assertSame('。', $response->json('tokens.3.surface'));
+    }
+
+    public function test_past_auxiliary_does_not_start_compound(): void
+    {
+        // «た + の» не склеивается в омоним «たの» из словаря; «の + に» → «のに».
+        $this->seedDictionaryWith('のに', 'のに');
+        $this->seedDictionaryWith('たの', 'たの');
+
+        $user = User::factory()->create();
+        $text = UserText::create([
+            'user_id' => $user->id,
+            'title'   => 'Test',
+            'content' => '食べたのに。',
+        ]);
+
+        $this->fakeNlpTokens([
+            ['surface' => '食べ', 'base_form' => '食べる', 'reading' => 'タベ', 'pos' => '動詞',   'start' => 0, 'end' => 2],
+            ['surface' => 'た',   'base_form' => 'た',     'reading' => 'タ',   'pos' => '助動詞', 'start' => 2, 'end' => 3],
+            ['surface' => 'の',   'base_form' => 'の',     'reading' => 'ノ',   'pos' => '助詞',   'start' => 3, 'end' => 4],
+            ['surface' => 'に',   'base_form' => 'に',     'reading' => 'ニ',   'pos' => '助詞',   'start' => 4, 'end' => 5],
+            ['surface' => '。',   'base_form' => '。',     'reading' => '',     'pos' => '補助記号', 'start' => 5, 'end' => 6],
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/texts/{$text->id}/tokenize");
+
+        $response->assertOk()
+            ->assertJsonCount(4, 'tokens');
+
+        $this->assertSame('食べ', $response->json('tokens.0.surface'));
+        $this->assertSame('た',   $response->json('tokens.1.surface'));
+        $this->assertSame('のに', $response->json('tokens.2.surface'));
+        $this->assertSame('のに', $response->json('tokens.2.base_form'));
+        $this->assertSame('。',   $response->json('tokens.3.surface'));
     }
 }

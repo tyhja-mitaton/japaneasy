@@ -34,11 +34,12 @@ class CompoundTokenMerger
         $merged = [];
         $i = 0;
         while ($i < $count) {
-            $token  = $tokens[$i];
+            $token = $tokens[$i];
+
             $terms  = $termSets[$token['base_form']] ?? [];
             $bestJ  = null;
 
-            if ($terms !== [] && ! self::isBoundary($token)) {
+            if ($terms !== [] && ! self::isBoundary($token) && ! self::isAuxStart($token)) {
                 $concat = $token['base_form'];
                 $length = mb_strlen($concat);
 
@@ -71,6 +72,17 @@ class CompoundTokenMerger
         }
 
         return $merged;
+    }
+
+    /**
+     * 助動詞 (た, ない, だ…) не может начинать словарный компаунд: иначе «た + の»
+     * ошибочно склеивается в омоним из словаря «たの», а не в た + のに.
+     *
+     * @param  array<string, mixed>  $token
+     */
+    private static function isAuxStart(array $token): bool
+    {
+        return ($token['pos'] ?? '') === '助動詞';
     }
 
     /**

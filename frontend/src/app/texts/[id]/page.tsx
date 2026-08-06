@@ -97,6 +97,7 @@ export default function TextAnalyzerPage() {
   const [text, setText] = useState<{ id: number; content: string; title: string } | null>(null);
   const [mode, setMode] = useState<Mode>('translation');
   const [tokens, setTokens] = useState<Token[]>([]);
+  const [grammarTokens, setGrammarTokens] = useState<Token[]>([]);
   const [grammarMatches, setGrammarMatches] = useState<GrammarMatch[]>([]);
   const [vocabulary, setVocabulary] = useState<VocabItem[]>([]);
   const [selectedWord, setSelectedWord] = useState<WordInfo | null>(null);
@@ -132,6 +133,9 @@ export default function TextAnalyzerPage() {
       try {
         const data = await apiFetch(`/api/texts/${id}/grammar`, { method: 'POST' });
         if (!cancelled) {
+          // В грамматическом режиме используем сырые токены nlp: спаны матчей
+          // выровнены с ними, словарная склейка (мерджер) остаётся в переводе.
+          setGrammarTokens(data.tokens ?? []);
           setGrammarMatches(data.patterns ?? []);
         }
       } finally {
@@ -221,7 +225,8 @@ export default function TextAnalyzerPage() {
 
   // ── Рендер текста ─────────────────────────────────────────────────────────
   const renderTokens = () => {
-    if (!tokens.length) return null;
+    const source = mode === 'grammar' ? grammarTokens : tokens;
+    if (!source.length) return null;
 
     // Строим карту: начало символа → грамматическое совпадение
     const matchByStart = new Map<number, GrammarMatch>();
@@ -234,7 +239,7 @@ export default function TextAnalyzerPage() {
       }
     }
 
-    return tokens.map((token, i) => {
+    return source.map((token, i) => {
       const isSpace = /^\s+$/.test(token.surface);
       if (isSpace) return <span key={i}>{token.surface}</span>;
 
