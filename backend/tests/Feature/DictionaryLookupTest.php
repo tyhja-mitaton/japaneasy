@@ -119,4 +119,85 @@ class DictionaryLookupTest extends TestCase
         $this->assertSame(['to run', 'fallback: бежать'], $definitions);
         $this->assertStringNotContainsString('occ. 奔る', $response->json('translation'));
     }
+
+    public function test_lookup_preserves_compound_term_without_nlp_analysis(): void
+    {
+        $dictionary = Dictionary::create([
+            'name'             => 'JMdict (English)',
+            'slug'             => 'jmdict',
+            'source_lang'      => 'jp',
+            'target_lang'      => 'en',
+            'is_active'        => true,
+            'default_priority' => 10,
+        ]);
+
+        DictionaryEntry::create([
+            'dictionary_id' => $dictionary->id,
+            'term'          => '気が付く',
+            'reading'       => 'きがつく',
+            'pos_tags'      => 'exp',
+            'score'         => 100,
+            'sequence'      => 1,
+            'definitions'   => ['to notice'],
+        ]);
+
+        // NLP не должен вызываться: точное совпадение термина в БД
+        Http::fake([
+            '*' => Http::response(['unexpected' => true], 200),
+        ]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/dictionary/lookup', ['word' => '気が付く']);
+
+        $response->assertOk();
+        $this->assertSame('気が付く', $response->json('base_form'));
+        $this->assertSame('きがつく', $response->json('reading'));
+        $this->assertSame('to notice', $response->json('translation'));
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/analyze/word'));
+    }
+
+    public function test_lookup_uses_nlp_for_inflected_words_without_db_term(): void
+    {
+        $dictionary = Dictionary::create([
+            'name'             => 'JMdict (English)',
+            'slug'             => 'jmdict',
+            'source_lang'      => 'jp',
+            'target_lang'      => 'en',
+            'is_active'        => true,
+            'default_priority' => 10,
+        ]);
+
+        DictionaryEntry::create([
+            'dictionary_id' => $dictionary->id,
+            'term'          => '食べる',
+            'reading'       => 'たべる',
+            'pos_tags'      => 'v1',
+            'score'         => 100,
+            'sequence'      => 1,
+            'definitions'   => ['to eat'],
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'base_form' => '食べる',
+                'reading'   => 'タベル',
+                'pos'       => '動詞',
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // 食べた нет как термина в БД → должен сработать NLP-фолбек
+        $response = $this->postJson('/api/dictionary/lookup', ['word' => '食べた']);
+
+        $response->assertOk();
+        $this->assertSame('食べる', $response->json('base_form'));
+        $this->assertSame('to eat', $response->json('translation'));
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/analyze/word'));
+    }
 }

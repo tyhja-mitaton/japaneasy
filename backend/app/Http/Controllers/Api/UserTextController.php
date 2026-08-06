@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GrammarArticle;
 use App\Models\UserText;
+use App\Services\CompoundTokenMerger;
 use App\Services\PlanLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -122,7 +123,10 @@ class UserTextController extends Controller
             return response()->json(['error' => 'NLP service unavailable'], 503);
         }
 
-        return response()->json($nlpResponse->json());
+        // Склеиваем составные слова (например 気がつく), которые MeCab разбивает на части
+        $tokens = CompoundTokenMerger::merge($nlpResponse->json('tokens') ?? []);
+
+        return response()->json(['tokens' => $tokens]);
     }
 
     // Грамматический анализ через NLP-сервис

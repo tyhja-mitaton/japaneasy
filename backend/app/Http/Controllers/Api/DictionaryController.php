@@ -19,14 +19,25 @@ class DictionaryController extends Controller
         $word = $request->input('word');
         $user = $request->user();
 
-        // NLP-анализ для базовой формы
-        $nlpResponse = Http::timeout(10)
-            ->post(config('services.nlp.url') . '/analyze/word', ['word' => $word])
-            ->json();
+        // Точное совпадение термина в словаре (например составное 気がつく).
+        // Если терм найден — не отправляем слово в NLP /analyze/word: MeCab
+        // разбил бы 気がつく на 気/が/つく, и поиск по базовой форме не сработал бы.
+        $hasExactTerm = DictionaryEntry::where('term', $word)->exists();
 
-        $baseForm = $nlpResponse['base_form'] ?? $word;
-        $reading  = $nlpResponse['reading']   ?? '';
-        $pos      = $nlpResponse['pos']        ?? '';
+        $baseForm = $word;
+        $reading  = '';
+        $pos      = '';
+
+        if (! $hasExactTerm) {
+            // NLP-анализ для базовой формы
+            $nlpResponse = Http::timeout(10)
+                ->post(config('services.nlp.url') . '/analyze/word', ['word' => $word])
+                ->json();
+
+            $baseForm = $nlpResponse['base_form'] ?? $word;
+            $reading  = $nlpResponse['reading']   ?? '';
+            $pos      = $nlpResponse['pos']        ?? '';
+        }
 
         // Ищем в БД-словарях
         $orderedDictionaries = $this->getOrderedDictionaries($user);
@@ -44,6 +55,14 @@ class DictionaryController extends Controller
                 })
                 ->orderBy('score', 'desc')
                 ->get();
+
+            // Для составных слов (точное совпадение термина) NLP не вызывался —
+            // добираем чтение и часть речи из первой найденной записи.
+            if ($entries->isNotEmpty() && $reading === '') {
+                $first = $entries->first();
+                $reading = $first->reading;
+                $pos     = $first->pos_tags;
+            }
 
             foreach ($orderedDictionaries as $dict) {
                 $dictEntries = $entries->where('dictionary_id', $dict->id);
