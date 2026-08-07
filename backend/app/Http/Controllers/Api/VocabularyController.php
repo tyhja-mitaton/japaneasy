@@ -53,23 +53,21 @@ class VocabularyController extends Controller
         return response()->json(['message' => 'Word removed from vocabulary.']);
     }
 
-    // Экспорт в формат Anki (tab-separated)
+    // Экспорт в формат Anki (tab-separated, одна запись = одна строка)
     public function exportAnki(Request $request): Response
     {
-        $items = VocabularyItem::where('user_id', $request->user()->id)->get();
+        $items = VocabularyItem::where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        // Anki формат: Front\tBack\n
-        // Front: слово + чтение, Back: перевод
+        // Anki формат: Слово\tПеревод\tЧтение (хирагана)\tКонтекст
         $lines = $items->map(function (VocabularyItem $item) {
-            $front = $item->base_form;
-            if ($item->reading) {
-                $front .= "（{$item->reading}）";
-            }
-            $back = $item->translation ?? '';
-            if ($item->context_sentence) {
-                $back .= "\n\n" . $item->context_sentence;
-            }
-            return "{$front}\t{$back}";
+            return implode("\t", [
+                $item->base_form,
+                $item->translation ?? '',
+                mb_convert_kana($item->reading ?? '', 'c'),
+                $item->context_sentence ?? '',
+            ]);
         })->join("\n");
 
         return response($lines, 200, [

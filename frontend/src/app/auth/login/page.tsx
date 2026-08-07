@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authApi, notifyAuthChanged } from '@/lib/auth-api';
 import { detectCountry } from '@/lib/detect-country';
+import { useI18n } from '@/lib/i18n';
 
 export default function Page() {
   const router = useRouter();
+  const { t } = useI18n();
   const [form, setForm] = useState({ email: '', password: '', country: undefined as string | undefined });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,9 +36,9 @@ export default function Page() {
     } catch (err: unknown) {
       const error = err as { email_verified?: boolean; message?: string };
       if (error.email_verified === false) {
-        setError('Подтвердите email перед входом.');
+        setError(t.auth.emailNotVerified);
       } else {
-        setError(error.message || 'Неверный email или пароль.');
+        setError(error.message || t.auth.loginFailed);
       }
     } finally {
       setLoading(false);
@@ -79,7 +81,7 @@ export default function Page() {
             fontWeight: 500,
             color: '#E8604A',
           }}>
-            <span>👋</span> С возвращением
+            <span>👋</span> {t.auth.welcomeBack}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -88,13 +90,13 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Вход в аккаунт
+            {t.auth.loginTitle}
           </h1>
           <p style={{
             fontSize: 15,
             color: '#8B7355',
           }}>
-            Продолжайте изучение японского
+            {t.auth.loginSubtitle}
           </p>
         </div>
 
@@ -127,7 +129,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Email
+                {t.auth.email}
               </label>
               <input
                 name="email"
@@ -150,7 +152,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Пароль
+                {t.auth.password}
               </label>
               <input
                 name="password"
@@ -159,7 +161,7 @@ export default function Page() {
                 value={form.password}
                 onChange={handleChange}
                 style={inputStyle}
-                placeholder="Ваш пароль"
+                placeholder={t.auth.yourPassword}
                 onFocus={e => e.target.style.borderColor = '#E8604A'}
                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
               />
@@ -176,7 +178,7 @@ export default function Page() {
                   transition: 'color 0.2s',
                 }}
               >
-                Забыли пароль?
+                {t.auth.forgotPassword}
               </Link>
             </div>
 
@@ -208,7 +210,7 @@ export default function Page() {
                 }
               }}
             >
-              {loading ? 'Вход…' : 'Войти'}
+              {loading ? t.auth.signingIn : t.auth.login}
             </button>
           </form>
         </div>
@@ -220,7 +222,7 @@ export default function Page() {
           fontSize: 14,
           color: '#8B7355',
         }}>
-          Нет аккаунта?{' '}
+          {t.auth.noAccount}{' '}
           <Link
             href="/auth/register"
             style={{
@@ -229,7 +231,7 @@ export default function Page() {
               fontWeight: 500,
             }}
           >
-            Зарегистрироваться
+            {t.auth.registerNow}
           </Link>
         </p>
       </div>

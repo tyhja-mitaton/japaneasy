@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { useI18n } from '@/lib/i18n';
+import { useI18n, tf } from '@/lib/i18n';
 import DictionaryPreferences from "@/components/DictionaryPreferences";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -64,8 +64,8 @@ type VocabItem = {
 
 type Tab = 'texts' | 'vocabulary' | 'subscription' | 'settings';
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ru-RU', {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -75,7 +75,8 @@ function formatDate(iso: string): string {
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
 
   const [me, setMe] = useState<Me | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -114,7 +115,7 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([apiFetch('/api/auth/me'), apiFetch('/api/plans'), apiFetch('/api/vocabulary')])
+    Promise.all([apiFetch('/api/auth/me'), apiFetch(`/api/plans?lang=${lang}`), apiFetch('/api/vocabulary')])
       .then(([user, plansData, vocab]) => {
         setMe(user);
         setPlans(plansData?.plans ?? []);
@@ -127,7 +128,7 @@ export default function ProfilePage() {
       })
       .catch(() => router.push('/auth/login'))
       .finally(() => setLoading(false));
-  }, [id, router, loadTexts]);
+  }, [id, router, loadTexts, lang]);
 
   // ── Тексты ──────────────────────────────────────────────────────────────────
 
@@ -199,7 +200,7 @@ export default function ProfilePage() {
       URL.revokeObjectURL(url);
     } catch (e) {
       const detail = e instanceof Error ? e.message : JSON.stringify(e);
-      alert(`Не удалось экспортировать: ${detail}`);
+      alert(tf(t.profile.exportError, { detail }));
     }
   };
 
@@ -224,13 +225,13 @@ export default function ProfilePage() {
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
-          Загрузка…
+          {t.common.loading}
         </div>
       </div>
     );
   }
 
-  const initial = (me?.name || 'Я').charAt(0).toUpperCase();
+  const initial = (me?.name || t.profile.initial).charAt(0).toUpperCase();
 
   const subscriptionActive =
     !!me?.plan
@@ -251,15 +252,17 @@ export default function ProfilePage() {
   const usageBars = usage
     ? [
         {
-          label: 'Тексты в месяц',
+          label: t.profile.usageTexts,
           used: usage.texts.used,
           limit: usage.texts.limit,
           sub: usage.texts.period_start
-            ? `Окно с ${new Date(usage.texts.period_start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`
+            ? tf(t.profile.usageWindow, {
+                date: new Date(usage.texts.period_start).toLocaleDateString(locale, { day: 'numeric', month: 'long' }),
+              })
             : undefined,
         },
         {
-          label: 'Словарь',
+          label: t.profile.usageVocab,
           used: usage.vocabulary.used,
           limit: usage.vocabulary.limit,
         },
@@ -343,7 +346,7 @@ export default function ProfilePage() {
             textTransform: 'uppercase',
             marginBottom: 16,
           }}>
-            Сохранённые тексты ({textTotal})
+            {t.texts.saved} ({textTotal})
           </div>
 
           {/* Поиск */}
@@ -371,7 +374,7 @@ export default function ProfilePage() {
                 <input
                   value={textSearchInput}
                   onChange={e => setTextSearchInput(e.target.value)}
-                  placeholder="Название или фрагмент текста…"
+                  placeholder={t.texts.searchPlaceholder}
                   style={{
                     width: '100%',
                     border: '1px solid #EDE8E1',
@@ -403,7 +406,7 @@ export default function ProfilePage() {
                 onMouseEnter={e => e.currentTarget.style.background = '#D14A35'}
                 onMouseLeave={e => e.currentTarget.style.background = '#E8604A'}
               >
-                Найти
+                {t.texts.searchButton}
               </button>
               {textSearch && (
                 <button
@@ -421,7 +424,7 @@ export default function ProfilePage() {
                   onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
                   onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                 >
-                  Сбросить
+                  {t.texts.clearSearch}
                 </button>
               )}
             </form>
@@ -437,19 +440,19 @@ export default function ProfilePage() {
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>{textSearch ? '🔍' : '📄'}</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-                {textSearch ? 'Ничего не найдено' : 'Нет сохранённых текстов'}
+                {textSearch ? t.texts.noResults : t.profile.noSavedTexts}
               </div>
               <div style={{ fontSize: 14, color: '#8B7355' }}>
                 {textSearch ? (
-                  'Попробуйте изменить запрос'
+                  t.profile.searchHint
                 ) : (
                   <>
-                    Добавьте текст на странице{' '}
+                    {t.profile.addTextOn}{' '}
                     <span
                       onClick={() => router.push('/texts')}
                       style={{ color: '#E8604A', cursor: 'pointer' }}
                     >
-                      «Мои тексты»
+                      {t.profile.myTextsPage}
                     </span>
                   </>
                 )}
@@ -478,16 +481,16 @@ export default function ProfilePage() {
                     e.currentTarget.style.color = '#E8604A';
                   }}
                 >
-                  Сбросить
+                  {t.texts.clearSearch}
                 </button>
               )}
             </div>
           ) : (
             <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {texts.map(t => (
+              {texts.map(tt => (
                 <div
-                  key={t.id}
+                  key={tt.id}
                   style={{
                     background: 'white',
                     borderRadius: 16,
@@ -495,12 +498,12 @@ export default function ProfilePage() {
                     border: '1px solid #EDE8E1',
                   }}
                 >
-                  {editingId === t.id && editText ? (
+                  {editingId === tt.id && editText ? (
                     <div>
                       <input
                         value={editTitle}
                         onChange={e => setEditTitle(e.target.value)}
-                        placeholder="Заголовок"
+                        placeholder={t.profile.editTitlePlaceholder}
                         style={{
                           width: '100%',
                           border: '1px solid #EDE8E1',
@@ -517,7 +520,7 @@ export default function ProfilePage() {
                       <textarea
                         value={editContent}
                         onChange={e => setEditContent(e.target.value)}
-                        placeholder="Содержимое текста…"
+                        placeholder={t.profile.editContentPlaceholder}
                         rows={6}
                         style={{
                           width: '100%',
@@ -547,7 +550,7 @@ export default function ProfilePage() {
                             cursor: 'pointer',
                           }}
                         >
-                          Отмена
+                          {t.common.cancel}
                         </button>
                         <button
                           onClick={saveEdit}
@@ -563,7 +566,7 @@ export default function ProfilePage() {
                             cursor: saving || !editContent.trim() ? 'not-allowed' : 'pointer',
                           }}
                         >
-                          {saving ? 'Сохранение…' : 'Сохранить'}
+                          {saving ? t.common.saving : t.common.save}
                         </button>
                       </div>
                     </div>
@@ -575,7 +578,7 @@ export default function ProfilePage() {
                         justifyContent: 'space-between',
                       }}>
                         <button
-                          onClick={() => router.push(`/texts/${t.id}`)}
+                          onClick={() => router.push(`/texts/${tt.id}`)}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -591,15 +594,15 @@ export default function ProfilePage() {
                             color: '#1A1A1A',
                             marginBottom: 4,
                           }}>
-                            {t.title}
+                            {tt.title}
                           </div>
                           <div style={{ fontSize: 13, color: '#8B7355' }}>
-                            {formatDate(t.created_at)}
+                            {formatDate(tt.created_at, locale)}
                           </div>
                         </button>
                         <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
                           <button
-                            onClick={() => startEdit(t)}
+                            onClick={() => startEdit(tt)}
                             style={{
                               background: 'none',
                               border: 'none',
@@ -612,10 +615,10 @@ export default function ProfilePage() {
                             onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
                             onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                           >
-                            Редактировать
+                            {t.profile.edit}
                           </button>
                           <button
-                            onClick={() => handleDeleteText(t.id)}
+                            onClick={() => handleDeleteText(tt.id)}
                             style={{
                               background: 'none',
                               border: 'none',
@@ -628,7 +631,7 @@ export default function ProfilePage() {
                             onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
                             onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                           >
-                            Удалить
+                            {t.texts.delete}
                           </button>
                         </div>
                       </div>
@@ -661,10 +664,10 @@ export default function ProfilePage() {
                     transition: 'all 0.2s',
                   }}
                 >
-                  ← Назад
+                  {t.texts.prevPage}
                 </button>
                 <div style={{ fontSize: 14, color: '#8B7355', minWidth: 110, textAlign: 'center' }}>
-                  Страница {textPage} из {textLastPage}
+                  {t.texts.page} {textPage} {t.texts.of} {textLastPage}
                 </div>
                 <button
                   onClick={() => loadTexts(textPage + 1, textSearch)}
@@ -681,7 +684,7 @@ export default function ProfilePage() {
                     transition: 'all 0.2s',
                   }}
                 >
-                  Вперёд →
+                  {t.texts.nextPage}
                 </button>
               </div>
             )}
@@ -708,7 +711,7 @@ export default function ProfilePage() {
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
             }}>
-              Сохранённые слова ({vocabulary.length})
+              {tf(t.profile.savedWords, { count: vocabulary.length })}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
@@ -737,7 +740,7 @@ export default function ProfilePage() {
                 }}
               >
                 <span>🃏</span>
-                Экспорт в Anki
+                {t.vocabulary.export}
               </button>
               <button
                 onClick={handleExportCsv}
@@ -765,7 +768,7 @@ export default function ProfilePage() {
                 }}
               >
                 <span>⬇️</span>
-                Экспорт (CSV)
+                {t.profile.exportCsv}
               </button>
             </div>
           </div>
@@ -780,10 +783,10 @@ export default function ProfilePage() {
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>📚</div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-                Словарь пуст
+                {t.profile.vocabEmpty}
               </div>
               <div style={{ fontSize: 14, color: '#8B7355' }}>
-                Добавляйте слова при изучении текстов, и они появятся здесь
+                {t.profile.vocabEmptyHint}
               </div>
             </div>
           ) : (
@@ -856,7 +859,7 @@ export default function ProfilePage() {
                     onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
                     onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                   >
-                    Удалить
+                    {t.texts.delete}
                   </button>
                 </div>
               ))}
@@ -886,7 +889,7 @@ export default function ProfilePage() {
             }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 6 }}>
-                  Текущий тариф
+                  {t.profile.currentPlan}
                 </div>
                 <div style={{
                   display: 'inline-flex',
@@ -920,7 +923,7 @@ export default function ProfilePage() {
                   transition: 'background 0.2s, transform 0.15s',
                 }}
               >
-                {subscriptionActive ? 'Изменить тариф' : 'Выбрать тариф'}
+                {subscriptionActive ? t.profile.changePlan : t.profile.choosePlan}
               </Link>
             </div>
 
@@ -928,11 +931,11 @@ export default function ProfilePage() {
               {/* Действует до */}
               <div>
                 <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 4 }}>
-                  Подписка действует до
+                  {t.profile.activeUntil}
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A' }}>
                   {subscriptionActive && me?.subscription_ends_at
-                    ? formatDate(me.subscription_ends_at)
+                    ? formatDate(me.subscription_ends_at, locale)
                     : '—'}
                 </div>
               </div>
@@ -948,7 +951,7 @@ export default function ProfilePage() {
                     textTransform: 'uppercase',
                     marginBottom: 12,
                   }}>
-                    Использовано лимитов
+                    {t.profile.limitsUsed}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {usageBars.map(bar => {
@@ -1006,7 +1009,7 @@ export default function ProfilePage() {
                   textTransform: 'uppercase',
                   marginBottom: 12,
                 }}>
-                  Возможности тарифа
+                  {t.profile.planFeatures}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {features.map(f => (
@@ -1029,7 +1032,7 @@ export default function ProfilePage() {
             color: '#8B7355',
             lineHeight: 1.6,
           }}>
-            💡 После оплаты доступ к платным тарифам активируется автоматически. Если оплата прошла, но тариф не обновился — напишите нам.
+            {t.profile.paymentHint}
           </div>
         </div>
       )}
@@ -1076,10 +1079,10 @@ export default function ProfilePage() {
             }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A' }}>
-                  Выбор словарей
+                  {t.profile.dictPrefsTitle}
                 </div>
                 <div style={{ fontSize: 13, color: '#8B7355', marginTop: 4 }}>
-                  Подключайте дополнительные словари для анализа текстов
+                  {t.profile.dictPrefsHint}
                 </div>
               </div>
             </div>

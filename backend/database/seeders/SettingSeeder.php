@@ -17,6 +17,7 @@ class SettingSeeder extends Seeder
             // ── Тарифы ────────────────────────────────────────────────────
             ['key' => 'plan_standard_price',    'value' => '300',        'description' => 'Цена Standard (руб/мес)'],
             ['key' => 'plan_premium_price',     'value' => '490',        'description' => 'Цена Premium (руб/мес)'],
+            ['key' => 'usd_rate',               'value' => '82',         'description' => 'Курс доллара для отображения цен в английской версии'],
 
             // ── Лимиты тарифов (0 = безлимит) ─────────────────────────────
             ['key' => 'limit_texts_free',       'value' => '5',           'description' => 'Free: текстов в месяц (0 = безлимит)'],

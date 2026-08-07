@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -36,6 +37,8 @@ type Meta = {
 
 export default function Page() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
   const [articles, setArticles] = useState<Article[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
@@ -56,7 +59,7 @@ export default function Page() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить эту статью?')) return;
+    if (!confirm(t.admin.grammar.deleteConfirm)) return;
     await apiFetch(`/api/admin/grammar-articles/${id}`, { method: 'DELETE' });
     setArticles(prev => prev.filter(a => a.id !== id));
     if (articles.length === 1 && page > 1) setPage(p => p - 1);
@@ -79,7 +82,7 @@ export default function Page() {
             fontWeight: 500,
             color: '#2563EB',
           }}>
-            <span>⚙️</span> Админ-панель
+            <span>⚙️</span> {t.nav.adminPanel}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -87,7 +90,7 @@ export default function Page() {
             fontWeight: 700,
             color: '#1A1A1A',
           }}>
-            Грамматические статьи
+            {t.admin.grammar.title}
           </h1>
         </div>
         <Link
@@ -108,7 +111,7 @@ export default function Page() {
             transition: 'background 0.2s, transform 0.15s',
           }}
         >
-          <span>+</span> Новая статья
+          <span>+</span> {t.admin.grammar.newArticle}
         </Link>
       </div>
 
@@ -118,7 +121,7 @@ export default function Page() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') runSearch(); }}
-          placeholder="Поиск по названию или коду…"
+          placeholder={t.admin.grammar.searchPlaceholder}
           style={{
             width: '100%',
             maxWidth: 360,
@@ -145,7 +148,7 @@ export default function Page() {
           onMouseEnter={e => { e.currentTarget.style.background = '#1D4ED8'; }}
           onMouseLeave={e => { e.currentTarget.style.background = '#2563EB'; }}
         >
-          Найти
+          {t.admin.grammar.find}
         </button>
         {search && (
           <button
@@ -155,7 +158,7 @@ export default function Page() {
               padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
             }}
           >
-            Сбросить
+            {t.admin.grammar.reset}
           </button>
         )}
       </div>
@@ -176,14 +179,14 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            {search ? 'Ничего не найдено' : 'Нет статей'}
+            {search ? t.admin.grammar.noResults : t.admin.grammar.noArticles}
           </div>
           <div style={{
             fontSize: 14,
             color: '#8B7355',
             marginBottom: 24,
           }}>
-            {search ? 'Попробуйте изменить поисковый запрос' : 'Создайте первую грамматическую статью'}
+            {search ? t.admin.grammar.noResultsHint : t.admin.grammar.noArticlesHint}
           </div>
           {!search && (
             <Link
@@ -202,7 +205,7 @@ export default function Page() {
                 textDecoration: 'none',
               }}
             >
-              Создать статью
+              {t.admin.grammar.createArticle}
             </Link>
           )}
         </div>
@@ -273,7 +276,7 @@ export default function Page() {
                   color: '#8B7355',
                   marginTop: 8,
                 }}>
-                  {a.author.name} · {new Date(a.created_at).toLocaleDateString('ru-RU', {
+                  {a.author.name} · {new Date(a.created_at).toLocaleDateString(locale, {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
@@ -299,7 +302,7 @@ export default function Page() {
                     transition: 'background 0.2s',
                   }}
                 >
-                  Редактировать
+                  {t.admin.grammar.edit}
                 </Link>
                 <button
                   onClick={() => handleDelete(a.id)}
@@ -322,7 +325,7 @@ export default function Page() {
                     e.currentTarget.style.background = 'transparent';
                   }}
                 >
-                  Удалить
+                  {t.admin.grammar.delete}
                 </button>
               </div>
             </div>
@@ -360,7 +363,7 @@ export default function Page() {
               e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.background = 'none';
             }}
           >
-            ← Назад
+            {t.admin.grammar.prev}
           </button>
 
           {/* Page numbers */}
@@ -411,7 +414,7 @@ export default function Page() {
               e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.background = 'none';
             }}
           >
-            Далее →
+            {t.admin.grammar.next}
           </button>
         </div>
       )}
@@ -430,7 +433,7 @@ export default function Page() {
             padding: '8px 16px',
             borderRadius: 20,
           }}>
-            Всего статей: {meta.total}
+            {tf(t.admin.grammar.total, { total: meta.total })}
           </div>
         </div>
       )}

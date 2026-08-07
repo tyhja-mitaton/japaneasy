@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import { useI18n } from '@/lib/i18n';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -17,7 +17,7 @@ type Article = {
 export default function GrammarArticlePage() {
     const { code } = useParams<{ code: string }>();
     const router = useRouter();
-    const { lang } = useI18n();
+    const { lang, t } = useI18n();
     const [article, setArticle] = useState<Article | null>(null);
     const [notFound, setNotFound] = useState(false);
 
@@ -47,19 +47,14 @@ export default function GrammarArticlePage() {
                 color: '#1A1A1A',
                 marginBottom: 12,
             }}>
-                Статья не найдена
+                {t.grammar.notFoundTitle}
             </h1>
             <p style={{
                 fontSize: 15,
                 color: '#8B7355',
                 marginBottom: 32,
             }}>
-                Статья для кода <code style={{
-                    fontFamily: 'monospace',
-                    background: 'rgba(139,115,85,0.1)',
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                }}>{code}</code> ещё не создана.
+                {tf(t.grammar.notFoundHint, { code })}
             </p>
             <button
                 onClick={() => router.push('/grammar')}
@@ -83,7 +78,7 @@ export default function GrammarArticlePage() {
                     e.currentTarget.style.transform = 'translateY(0)';
                 }}
             >
-                ← К списку грамматики
+                {t.grammar.backToList}
             </button>
         </div>
     );
@@ -99,7 +94,7 @@ export default function GrammarArticlePage() {
         }}>
             <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
-                Загрузка…
+                {t.common.loading}
             </div>
         </div>
     );
@@ -125,7 +120,7 @@ export default function GrammarArticlePage() {
                 onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
                 onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
             >
-                ← Назад
+                {t.grammar.back}
             </button>
 
             {/* Article header */}
@@ -142,7 +137,7 @@ export default function GrammarArticlePage() {
                     fontWeight: 500,
                     color: '#2D5A3D',
                 }}>
-                    <span>📖</span> Грамматика
+                    <span>📖</span> {t.nav.grammar}
                 </div>
 
                 <h1 style={{

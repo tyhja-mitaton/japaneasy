@@ -238,7 +238,7 @@ export default function DictionaryPreferences() {
                 {dict.name}
               </div>
               <div style={{ fontSize: 12, color: '#8B7355', marginTop: 2 }}>
-                {dict.entries_count.toLocaleString('ru-RU')}{' '}
+                {dict.entries_count.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US')}{' '}
                 {lang === 'ru' ? 'записей' : 'entries'}
               </div>
             </div>

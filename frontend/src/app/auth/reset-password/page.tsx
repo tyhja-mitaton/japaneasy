@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/auth-api';
+import { useI18n } from '@/lib/i18n';
 
 export default function Page() {
   return (
@@ -15,6 +16,7 @@ export default function Page() {
 function ResetPasswordForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const { t } = useI18n();
   const [form, setForm] = useState({
     email: params.get('email') || '',
     password: '',
@@ -38,7 +40,7 @@ function ResetPasswordForm() {
       router.push('/auth/login?reset=success');
     } catch (err: unknown) {
       const error = err as { message?: string };
-      setError(error.message || 'Ссылка для сброса недействительна или истекла.');
+      setError(error.message || t.auth.invalidResetLink);
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ function ResetPasswordForm() {
             fontWeight: 500,
             color: '#E8604A',
           }}>
-            <span>🔑</span> Сброс пароля
+            <span>🔑</span> {t.auth.resetPasswordBadge}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -89,13 +91,13 @@ function ResetPasswordForm() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Новый пароль
+            {t.auth.newPassword}
           </h1>
           <p style={{
             fontSize: 15,
             color: '#8B7355',
           }}>
-            Придумайте надёжный пароль для аккаунта
+            {t.auth.resetPasswordSubtitle}
           </p>
         </div>
 
@@ -128,7 +130,7 @@ function ResetPasswordForm() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Email
+                {t.auth.email}
               </label>
               <input
                 name="email"
@@ -150,7 +152,7 @@ function ResetPasswordForm() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Новый пароль
+                {t.auth.newPassword}
               </label>
               <input
                 name="password"
@@ -159,7 +161,7 @@ function ResetPasswordForm() {
                 value={form.password}
                 onChange={handleChange}
                 style={inputStyle}
-                placeholder="Минимум 8 символов"
+                placeholder={t.auth.minPassword}
                 onFocus={e => e.target.style.borderColor = '#E8604A'}
                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
               />
@@ -173,7 +175,7 @@ function ResetPasswordForm() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Подтвердите пароль
+                {t.auth.confirmPassword}
               </label>
               <input
                 name="password_confirmation"
@@ -182,7 +184,7 @@ function ResetPasswordForm() {
                 value={form.password_confirmation}
                 onChange={handleChange}
                 style={inputStyle}
-                placeholder="Повторите пароль"
+                placeholder={t.auth.confirmPassword}
                 onFocus={e => e.target.style.borderColor = '#E8604A'}
                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
               />
@@ -216,7 +218,7 @@ function ResetPasswordForm() {
                 }
               }}
             >
-              {loading ? 'Сохранение…' : 'Установить пароль'}
+              {loading ? t.common.saving : t.auth.setPassword}
             </button>
           </form>
         </div>

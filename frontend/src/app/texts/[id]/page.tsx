@@ -92,7 +92,7 @@ function colorForCode(code: string): string {
 export default function TextAnalyzerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
 
   const [text, setText] = useState<{ id: number; content: string; title: string } | null>(null);
   const [mode, setMode] = useState<Mode>('translation');
@@ -219,7 +219,7 @@ export default function TextAnalyzerPage() {
         : e422?.errors
           ? Object.values(e422.errors).flat()[0]
           : e422?.message;
-      setVocabError(msg || 'Не удалось изменить словарь.');
+      setVocabError(msg || t.analyzer.vocabError);
     }
   };
 
@@ -320,7 +320,7 @@ export default function TextAnalyzerPage() {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
-            Загрузка…
+            {t.common.loading}
           </div>
         </div>
     );
@@ -348,7 +348,7 @@ export default function TextAnalyzerPage() {
             onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
             onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
         >
-          ← Мои тексты
+          {t.analyzer.backToTexts}
         </button>
         <h1 style={{
           fontFamily: "'Noto Serif JP'",
@@ -397,7 +397,7 @@ export default function TextAnalyzerPage() {
                     color: mode === m ? 'white' : '#8B7355',
                   }}
               >
-                {m === 'translation' ? '🔍 Перевод' : '📖 Грамматика'}
+                {m === 'translation' ? t.analyzer.translationMode : t.analyzer.grammarMode}
               </button>
           ))}
         </div>
@@ -439,12 +439,12 @@ export default function TextAnalyzerPage() {
         }}>
           {nlpLoading && mode === 'grammar' && (
               <div style={{ fontSize: 14, color: '#8B7355', marginBottom: 12 }}>
-                Анализ грамматики…
+                {t.analyzer.analyzingGrammar}
               </div>
           )}
           {mode === 'grammar' && !nlpLoading && grammarMatches.length === 0 && (
               <div style={{ fontSize: 14, color: '#E8604A', marginBottom: 12 }}>
-                Грамматические паттерны не найдены. Добавьте паттерны в статьи через админ-панель.
+                {t.analyzer.noPatternsFound}
               </div>
           )}
           <div
@@ -520,7 +520,7 @@ export default function TextAnalyzerPage() {
                     </p>
                 ) : (
                     <p style={{ color: '#8B7355', fontSize: 14, fontStyle: 'italic', marginBottom: 20 }}>
-                      Перевод не найден
+                      {t.analyzer.noTranslation}
                     </p>
                 )}
                 <button
@@ -544,7 +544,7 @@ export default function TextAnalyzerPage() {
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                 >
-                  {selectedWord.inVocabulary ? '✓ В словаре' : '+ Добавить в словарь'}
+                  {selectedWord.inVocabulary ? t.analyzer.inVocab : t.analyzer.addToVocab}
                 </button>
                 {vocabError && (
                     <div style={{
@@ -615,12 +615,12 @@ export default function TextAnalyzerPage() {
                           }}
                           target="_blank"
                       >
-                        Читать полностью →
+                        {t.analyzer.readArticle}
                       </a>
                     </>
                 ) : (
                     <p style={{ fontSize: 14, color: '#8B7355', fontStyle: 'italic' }}>
-                      Статья для этого паттерна пока не создана.
+                      {t.analyzer.noArticle}
                     </p>
                 )}
               </div>
@@ -637,7 +637,7 @@ export default function TextAnalyzerPage() {
               }}>
                 <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.5 }}>🔍</div>
                 <div style={{ fontSize: 14, color: '#8B7355' }}>
-                  Нажмите на слово, чтобы увидеть перевод
+                  {t.analyzer.clickWord}
                 </div>
               </div>
           )}
@@ -651,7 +651,7 @@ export default function TextAnalyzerPage() {
               }}>
                 <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.5 }}>📖</div>
                 <div style={{ fontSize: 14, color: '#8B7355' }}>
-                  Нажмите на подсвеченное слово, чтобы увидеть грамматику
+                  {t.analyzer.clickPattern}
                 </div>
               </div>
           )}
@@ -673,7 +673,7 @@ export default function TextAnalyzerPage() {
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
                 }}>
-                  Найденные паттерны
+                  {t.analyzer.patternsFound}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[...new Set(grammarMatches.map(m => m.grammar_code))].map(code => (

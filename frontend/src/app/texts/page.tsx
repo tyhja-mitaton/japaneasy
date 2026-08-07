@@ -40,7 +40,7 @@ export default function Page() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const loadTexts = useCallback(async (pageNum: number, query: string) => {
     const params = new URLSearchParams({ page: String(pageNum) });
@@ -82,7 +82,7 @@ export default function Page() {
         : e422?.errors
           ? Object.values(e422.errors).flat()[0]
           : e422?.message;
-      setError(msg || 'Не удалось сохранить текст.');
+      setError(msg || t.texts.saveError);
     } finally {
       setLoading(false);
     }
@@ -90,13 +90,13 @@ export default function Page() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    loadTexts(1, searchInput.trim()).catch(() => setError('Не удалось загрузить тексты.'));
+    loadTexts(1, searchInput.trim()).catch(() => setError(t.texts.loadError));
   };
 
   const clearSearch = () => {
     setSearchInput('');
     setSearch('');
-    loadTexts(1, '').catch(() => setError('Не удалось загрузить тексты.'));
+    loadTexts(1, '').catch(() => setError(t.texts.loadError));
   };
 
   const handleDelete = async (id: number) => {
@@ -109,7 +109,7 @@ export default function Page() {
         await loadTexts(page, search);
       }
     } catch {
-      setError('Не удалось удалить текст.');
+      setError(t.texts.deleteError);
     }
   };
 
@@ -361,7 +361,7 @@ export default function Page() {
                     fontSize: 13,
                     color: '#8B7355',
                   }}>
-                    {new Date(tt.created_at).toLocaleDateString('ru-RU', {
+                    {new Date(tt.created_at).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric',
@@ -460,7 +460,7 @@ export default function Page() {
           }}>
             {search
               ? t.texts.searchPlaceholder
-              : 'Вставьте японский текст в форму выше, чтобы начать изучение'}
+              : t.texts.emptyHint}
           </div>
           {search && (
             <button

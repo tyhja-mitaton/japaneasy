@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authApi, notifyAuthChanged, AUTH_CHANGED_EVENT } from '@/lib/auth-api';
+import { useI18n } from '@/lib/i18n';
 
 type UserInfo = {
   id?: number;
@@ -15,6 +16,7 @@ type UserInfo = {
 
 export default function Navbar() {
   const router = useRouter();
+  const { t } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -47,7 +49,7 @@ export default function Navbar() {
           setIsPremium(!!user.is_premium);
           setIsAdmin(Array.isArray(user.roles)
             && (user.roles.includes('administrator') || user.roles.includes('manager')));
-          setUserName(user.name?.charAt(0) || 'Я');
+          setUserName(user.name?.charAt(0) || t.nav.initial);
           setUserId(user.id ?? null);
         })
         .catch(() => {
@@ -67,7 +69,7 @@ export default function Navbar() {
       window.removeEventListener(AUTH_CHANGED_EVENT, refreshAuth);
       window.removeEventListener('storage', refreshAuth);
     };
-  }, []);
+  }, [t]);
 
   const handleLogout = async () => {
     try {
@@ -86,15 +88,14 @@ export default function Navbar() {
 
   const navLinks = isLoggedIn
     ? [
-        { label: 'Тексты', href: '/texts' },
-        { label: 'Грамматика', href: '/grammar' },
-        { label: 'Словарь', href: '/vocabulary' },
-        ...(isPremium ? [{ label: 'Видео', href: '/video' }] : []),
-        ...(isAdmin ? [{ label: 'Админ-панель', href: '/admin/dashboard' }] : []),
+        { label: t.nav.texts, href: '/texts' },
+        { label: t.nav.grammar, href: '/grammar' },
+        ...(isPremium ? [{ label: t.nav.video, href: '/video' }] : []),
+        ...(isAdmin ? [{ label: t.nav.adminPanel, href: '/admin/dashboard' }] : []),
       ]
     : [
-        { label: 'Главная', href: '/' },
-        { label: 'Грамматика', href: '/grammar' },
+        { label: t.nav.home, href: '/' },
+        { label: t.nav.grammar, href: '/grammar' },
       ];
 
   return (
@@ -184,8 +185,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" style={{ textDecoration: 'none', flexShrink: 0 }}>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <span style={{ fontFamily: "'Noto Serif JP'", fontSize: 20, fontWeight: 700, color: '#1A1A1A', letterSpacing: '-0.02em' }}>日本語</span>
-              <span style={{ fontSize: 9, fontWeight: 600, color: '#8B7355', letterSpacing: '0.18em' }}>NIHONGO</span>
+              <img src="/japaneasy-logo.png" alt="JapanEasy" style={{ height: 100, width: 'auto', marginTop: 4 }} />
             </div>
           </Link>
 
@@ -216,14 +216,14 @@ export default function Navbar() {
                   </span>
                 ) : (
                   <Link href="/#pricing" className="nav-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span>⭐</span> Улучшить план
+                    <span>⭐</span> {t.nav.upgrade}
                   </Link>
                 )}
                 <button
                   onClick={handleLogout}
                   className="nav-btn-outline"
                 >
-                  Выйти
+                  {t.nav.logout}
                 </button>
                 <div style={{
                   width: 36,
@@ -253,17 +253,17 @@ export default function Navbar() {
                       textDecoration: 'none',
                       color: 'white',
                     }}>
-                      {userName || 'Я'}
+                      {userName || t.nav.initial}
                     </Link>
                   ) : (
-                    userName || 'Я'
+                    userName || t.nav.initial
                   )}
                 </div>
               </>
             ) : (
               <>
-                <Link href="/auth/login" className="nav-btn-outline">Войти</Link>
-                <Link href="/auth/register" className="nav-btn-primary">Регистрация</Link>
+                <Link href="/auth/login" className="nav-btn-outline">{t.nav.login}</Link>
+                <Link href="/auth/register" className="nav-btn-primary">{t.nav.register}</Link>
               </>
             )}
           </div>
@@ -298,7 +298,7 @@ export default function Navbar() {
                   style={{ width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   onClick={() => setMenuOpen(false)}
                 >
-                  <span>⭐</span> Улучшить план
+                  <span>⭐</span> {t.nav.upgrade}
                 </Link>
               )}
               <button
@@ -306,13 +306,13 @@ export default function Navbar() {
                 className="nav-btn-outline"
                 style={{ width: 'fit-content' }}
               >
-                Выйти
+                {t.nav.logout}
               </button>
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="nav-btn-outline" onClick={() => setMenuOpen(false)}>Войти</Link>
-              <Link href="/auth/register" className="nav-btn-primary" onClick={() => setMenuOpen(false)}>Регистрация</Link>
+              <Link href="/auth/login" className="nav-btn-outline" onClick={() => setMenuOpen(false)}>{t.nav.login}</Link>
+              <Link href="/auth/register" className="nav-btn-primary" onClick={() => setMenuOpen(false)}>{t.nav.register}</Link>
             </>
           )}
         </div>

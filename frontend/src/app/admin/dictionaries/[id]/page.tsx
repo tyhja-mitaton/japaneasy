@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -21,14 +22,6 @@ type DictDetail = {
   is_active: boolean;
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  idle: 'Не импортирован',
-  pending: 'В очереди',
-  processing: 'Идёт импорт',
-  completed: 'Импорт завершён',
-  failed: 'Ошибка импорта',
-};
-
 const STATUS_COLOR: Record<string, string> = {
   idle: '#8B7355',
   pending: '#B45309',
@@ -41,6 +34,8 @@ export default function Page() {
   const params = useParams<{ id: string }>();
   const id = Number(params?.id);
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
 
   const [dict, setDict] = useState<DictDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,7 +108,7 @@ export default function Page() {
           transition: 'color 0.2s',
         }}
       >
-        ← К списку словарей
+        ← {t.admin.dictionariesDetail.back}
       </Link>
 
       {loading ? (
@@ -123,7 +118,7 @@ export default function Page() {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
-            Загрузка…
+            {t.common.loading}
           </div>
         </div>
       ) : notFound ? (
@@ -136,10 +131,10 @@ export default function Page() {
         }}>
           <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>📚</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-            Словарь не найден
+            {t.admin.dictionariesDetail.notFound}
           </div>
           <div style={{ fontSize: 14, color: '#8B7355' }}>
-            Возможно, он был удалён
+            {t.admin.dictionariesDetail.notFoundHint}
           </div>
         </div>
       ) : dict ? (
@@ -158,7 +153,7 @@ export default function Page() {
               fontWeight: 500,
               color: BLUE,
             }}>
-              <span>⚙️</span> Админ-панель
+              <span>⚙️</span> {t.nav.adminPanel}
             </div>
             <h1 style={{
               fontFamily: "'Noto Serif JP'",
@@ -198,7 +193,7 @@ export default function Page() {
               justifyContent: 'space-between',
             }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>
-                Статус импорта
+                {t.admin.dictionariesDetail.statusTitle}
               </h2>
               <span style={{
                 fontSize: 12,
@@ -208,14 +203,14 @@ export default function Page() {
                 padding: '4px 12px',
                 borderRadius: 20,
               }}>
-                {STATUS_LABEL[dict.import_status]}
+                {t.admin.dictionariesDetail['status' + dict.import_status.charAt(0).toUpperCase() + dict.import_status.slice(1) as 'statusIdle' | 'statusPending' | 'statusProcessing' | 'statusCompleted' | 'statusFailed']}
               </span>
             </div>
             <div style={{ padding: '20px 24px' }}>
               {dict.import_status === 'processing' && (
                 <>
                   <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 8 }}>
-                    Идёт загрузка записей — {dict.import_progress}%
+                    {tf(t.admin.dictionariesDetail.processing, { n: dict.import_progress })}
                   </div>
                   <div style={{ height: 10, borderRadius: 50, background: '#F3EFE9', overflow: 'hidden' }}>
                     <div style={{
@@ -241,17 +236,17 @@ export default function Page() {
               )}
               {dict.import_status === 'pending' && (
                 <div style={{ fontSize: 14, color: '#8B7355' }}>
-                  Задача поставлена в очередь, импорт начнётся автоматически…
+                  {t.admin.dictionariesDetail.pendingDesc}
                 </div>
               )}
               {dict.import_status === 'failed' && (
                 <div style={{ fontSize: 14, color: CORAL, lineHeight: 1.6 }}>
-                  {dict.import_error || 'Не удалось импортировать словарь.'}
+                  {dict.import_error || t.admin.dictionariesDetail.failedDefault}
                 </div>
               )}
               {(dict.import_status === 'pending' || dict.import_status === 'processing') && (
                 <div style={{ fontSize: 12, color: '#8B7355', marginTop: 10 }}>
-                  Страница обновляется автоматически
+                  {t.admin.dictionariesDetail.autoRefresh}
                 </div>
               )}
             </div>
@@ -270,13 +265,13 @@ export default function Page() {
               background: '#FBF9F5',
             }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>
-                Информация
+                {t.admin.dictionariesDetail.infoTitle}
               </h2>
             </div>
             <div style={{ padding: '8px 24px' }}>
               {[
-                { label: 'Записей в словаре', value: dict.entries_count.toLocaleString('ru-RU') },
-                { label: 'Статус', value: dict.is_active ? 'Активен' : 'Деактивирован' },
+                { label: t.admin.dictionariesDetail.entriesCount, value: dict.entries_count.toLocaleString(locale) },
+                { label: t.admin.dictionariesDetail.statusField, value: dict.is_active ? t.admin.dictionariesDetail.active : t.admin.dictionariesDetail.inactive },
                 { label: 'ID', value: String(dict.id) },
               ].map((row, idx, arr) => (
                 <div key={row.label} style={{

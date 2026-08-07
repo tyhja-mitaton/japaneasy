@@ -3,46 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const BLUE = '#2563EB';
 
-const COUNTRY_NAMES: Record<string, string> = {
-  RU: 'Россия',
-  KZ: 'Казахстан',
-  BY: 'Беларусь',
-  UA: 'Украина',
-  UZ: 'Узбекистан',
-  KG: 'Кыргызстан',
-  TJ: 'Таджикистан',
-  TM: 'Туркменистан',
-  AM: 'Армения',
-  AZ: 'Азербайджан',
-  GE: 'Грузия',
-  MD: 'Молдова',
-  LV: 'Латвия',
-  LT: 'Литва',
-  EE: 'Эстония',
-  PL: 'Польша',
-  DE: 'Германия',
-  US: 'США',
-  GB: 'Великобритания',
-  FR: 'Франция',
-  ES: 'Испания',
-  IT: 'Италия',
-  TR: 'Турция',
-  JP: 'Япония',
-  CN: 'Китай',
-  KR: 'Южная Корея',
-  IL: 'Израиль',
-  IN: 'Индия',
-  AE: 'ОАЭ',
-};
-
-function countryName(code: string | null): string {
-  if (!code) return 'Не указана';
-  return COUNTRY_NAMES[code] || code;
+function countryName(code: string | null, countries: Record<string, string>): string {
+  if (!code) return countries.unknown;
+  return countries[code] || code;
 }
 
 type Totals = { users: number; paying_users: number; vocabulary_words: number };
@@ -59,6 +28,9 @@ type Dashboard = {
 
 export default function AdminPage() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
+  const countries = t.countries as unknown as Record<string, string>;
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [data, setData] = useState<Dashboard | null>(null);
@@ -108,7 +80,7 @@ export default function AdminPage() {
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
-          Загрузка…
+          {t.common.loading}
         </div>
       </div>
     );
@@ -140,10 +112,10 @@ export default function AdminPage() {
             color: '#1A1A1A',
             marginBottom: 12,
           }}>
-            Нет доступа
+            {t.admin.dashboard.deniedTitle}
           </h1>
           <p style={{ fontSize: 15, color: '#8B7355', marginBottom: 24, lineHeight: 1.6 }}>
-            Раздел доступен только администраторам и менеджерам.
+            {t.admin.dashboard.deniedDesc}
           </p>
           <Link
             href="/texts"
@@ -161,7 +133,7 @@ export default function AdminPage() {
               textDecoration: 'none',
             }}
           >
-            Вернуться к текстам
+            {t.admin.dashboard.backToTexts}
           </Link>
         </div>
       </div>
@@ -172,47 +144,47 @@ export default function AdminPage() {
   const maxWord = Math.max(1, ...(data?.top_words ?? []).map(w => w.total));
 
   const summaryCards = [
-    { icon: '👥', label: 'Пользователей', value: data?.totals.users ?? 0, color: BLUE },
-    { icon: '💳', label: 'С активной подпиской', value: data?.totals.paying_users ?? 0, color: '#2D5A3D' },
-    { icon: '📚', label: 'Слов в словаре', value: data?.totals.vocabulary_words ?? 0, color: '#E8604A' },
+    { icon: '👥', label: t.admin.dashboard.statUsers, value: data?.totals.users ?? 0, color: BLUE },
+    { icon: '💳', label: t.admin.dashboard.statPaying, value: data?.totals.paying_users ?? 0, color: '#2D5A3D' },
+    { icon: '📚', label: t.admin.dashboard.statWords, value: data?.totals.vocabulary_words ?? 0, color: '#E8604A' },
   ];
 
   const sections = [
     {
       href: '/admin/users',
       icon: '👥',
-      title: 'Пользователи',
-      desc: 'Управление аккаунтами, ролями и подписками',
+      title: t.admin.dashboard.sUsers,
+      desc: t.admin.dashboard.sUsersDesc,
     },
     {
       href: '/admin/dictionaries',
       icon: '📚',
-      title: 'Словари',
-      desc: 'Импорт, активация и приоритеты словарей',
+      title: t.admin.dashboard.sDicts,
+      desc: t.admin.dashboard.sDictsDesc,
     },
     {
       href: '/admin/grammar',
       icon: '📝',
-      title: 'Грамматические статьи',
-      desc: 'Создание и редактирование статей по грамматике',
+      title: t.admin.dashboard.sGrammar,
+      desc: t.admin.dashboard.sGrammarDesc,
     },
     {
       href: '/admin/videos',
       icon: '🎬',
-      title: 'Видео',
-      desc: 'Загрузка видео, превью и субтитров',
+      title: t.admin.dashboard.sVideos,
+      desc: t.admin.dashboard.sVideosDesc,
     },
     {
       href: '/admin/feedback',
       icon: '💬',
-      title: 'Обратная связь',
-      desc: 'Запросы пользователей и ответы на них',
+      title: t.admin.dashboard.sFeedback,
+      desc: t.admin.dashboard.sFeedbackDesc,
     },
     {
       href: '/admin/settings',
       icon: '⚙️',
-      title: 'Настройки',
-      desc: 'Платёжные системы, тарифы, налоги, лимиты',
+      title: t.admin.dashboard.sSettings,
+      desc: t.admin.dashboard.sSettingsDesc,
     },
   ];
 
@@ -232,7 +204,7 @@ export default function AdminPage() {
           fontWeight: 500,
           color: BLUE,
         }}>
-          <span>⚙️</span> Админ-панель
+          <span>⚙️</span> {t.nav.adminPanel}
         </div>
         <h1 style={{
           fontFamily: "'Noto Serif JP'",
@@ -241,10 +213,10 @@ export default function AdminPage() {
           color: '#1A1A1A',
           marginBottom: 4,
         }}>
-          Дашборд
+          {t.admin.dashboard.title}
         </h1>
         <div style={{ fontSize: 14, color: '#8B7355' }}>
-          Статистика по пользователям и словарю
+          {t.admin.dashboard.desc}
         </div>
       </div>
 
@@ -271,7 +243,7 @@ export default function AdminPage() {
               {card.icon}
             </div>
             <div style={{ fontSize: 32, fontWeight: 700, color: '#1A1A1A', lineHeight: 1 }}>
-              {card.value.toLocaleString('ru-RU')}
+              {card.value.toLocaleString(locale)}
             </div>
             <div style={{ fontSize: 13, color: '#8B7355', marginTop: 6 }}>
               {card.label}
@@ -300,12 +272,12 @@ export default function AdminPage() {
             background: '#FBF9F5',
           }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>
-              Пользователи по странам
+              {t.admin.dashboard.usersByCountry}
             </h2>
           </div>
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {(data?.users_by_country ?? []).length === 0 && (
-              <div style={{ fontSize: 14, color: '#8B7355' }}>Нет данных</div>
+              <div style={{ fontSize: 14, color: '#8B7355' }}>{t.admin.dashboard.noData}</div>
             )}
             {(data?.users_by_country ?? []).map(row => (
               <div key={row.country ?? 'unknown'}>
@@ -316,10 +288,10 @@ export default function AdminPage() {
                   marginBottom: 6,
                 }}>
                   <span style={{ fontSize: 14, fontWeight: 500, color: '#1A1A1A' }}>
-                    {countryName(row.country)}
+                    {countryName(row.country, countries)}
                   </span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: BLUE }}>
-                    {row.total.toLocaleString('ru-RU')}
+                    {row.total.toLocaleString(locale)}
                   </span>
                 </div>
                 <div style={{
@@ -353,12 +325,12 @@ export default function AdminPage() {
             background: '#FBF9F5',
           }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>
-              Страны, чаще всего покупающие подписку
+              {t.admin.dashboard.countriesByPurchase}
             </h2>
           </div>
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {(data?.countries_by_purchase ?? []).length === 0 && (
-              <div style={{ fontSize: 14, color: '#8B7355' }}>Покупок ещё не было</div>
+              <div style={{ fontSize: 14, color: '#8B7355' }}>{t.admin.dashboard.noPurchases}</div>
             )}
             {(data?.countries_by_purchase ?? []).map(row => {
               const rate = Math.round(row.conversion_rate * 100);
@@ -371,7 +343,7 @@ export default function AdminPage() {
                     marginBottom: 6,
                   }}>
                     <span style={{ fontSize: 14, fontWeight: 500, color: '#1A1A1A' }}>
-                      {countryName(row.country)}
+                      {countryName(row.country, countries)}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#2D5A3D' }}>
                       {rate}% · {row.paying_users}/{row.total_users}
@@ -411,12 +383,12 @@ export default function AdminPage() {
           background: '#FBF9F5',
         }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>
-            Топ слов, добавленных в словарь
+            {t.admin.dashboard.topWords}
           </h2>
         </div>
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {(data?.top_words ?? []).length === 0 && (
-            <div style={{ fontSize: 14, color: '#8B7355' }}>Словарь пока пуст</div>
+            <div style={{ fontSize: 14, color: '#8B7355' }}>{t.admin.dashboard.vocabEmpty}</div>
           )}
           {(data?.top_words ?? []).map((word, idx) => (
             <div key={`${word.surface}-${idx}`}>
@@ -457,7 +429,7 @@ export default function AdminPage() {
                   flexShrink: 0,
                   marginLeft: 12,
                 }}>
-                  × {word.total.toLocaleString('ru-RU')}
+                  × {word.total.toLocaleString(locale)}
                 </span>
               </div>
               <div style={{
@@ -488,7 +460,7 @@ export default function AdminPage() {
           textTransform: 'uppercase',
           marginBottom: 16,
         }}>
-          Другие разделы
+          {t.admin.dashboard.otherSections}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {sections.map(section => (

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { notifyAuthChanged } from '@/lib/auth-api';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -20,6 +21,7 @@ export default function BillingSuccessPage() {
 function SuccessContent() {
   const params = useSearchParams();
   const router = useRouter();
+  const { t, lang } = useI18n();
   const paymentId = params.get('payment');
 
   const [state, setState] = useState<'pending' | 'completed' | 'failed' | 'error'>(
@@ -77,7 +79,7 @@ function SuccessContent() {
   }, [paymentId, router]);
 
   const amount = data?.amount != null
-    ? Number(data.amount).toLocaleString('ru-RU') + ' ₽'
+    ? Number(data.amount).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US') + (lang === 'ru' ? ' ₽' : ' $')
     : '';
 
   return (
@@ -107,13 +109,13 @@ function SuccessContent() {
               color: '#1A1A1A',
               marginBottom: 12,
             }}>
-              Ожидаем подтверждение оплаты
+              {t.billing.pendingTitle}
             </h1>
             <p style={{ fontSize: 15, color: '#8B7355', marginBottom: 24, lineHeight: 1.6 }}>
-              Платёж ещё обрабатывается. Обычно это занимает несколько секунд.
+              {t.billing.pendingDesc}
             </p>
             <div style={{ fontSize: 13, color: '#B9A88F' }}>
-              Не закрывайте эту страницу
+              {t.billing.pendingHint}
             </div>
           </>
         )}
@@ -128,7 +130,7 @@ function SuccessContent() {
               color: '#2D5A3D',
               marginBottom: 12,
             }}>
-              Оплата прошла успешно!
+              {t.billing.completedTitle}
             </h1>
             {amount && (
               <div style={{
@@ -148,8 +150,8 @@ function SuccessContent() {
             )}
             <p style={{ fontSize: 15, color: '#8B7355', marginBottom: 32, lineHeight: 1.6 }}>
               {data?.plan
-                ? `Тариф «${data.plan === 'premium' ? 'Premium' : 'Standard'}» активирован.`
-                : 'Ваш тариф активирован.'}
+                ? tf(t.billing.completedDesc, { plan: data.plan === 'premium' ? 'Premium' : 'Standard' })
+                : t.billing.completedFallback}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Link
@@ -171,7 +173,7 @@ function SuccessContent() {
                   transition: 'background 0.2s, transform 0.15s',
                 }}
               >
-                Перейти к текстам
+                {t.billing.goToTexts}
               </Link>
               <Link
                 href="/"
@@ -182,7 +184,7 @@ function SuccessContent() {
                   padding: '8px',
                 }}
               >
-                Вернуться на главную
+                {t.billing.backHome}
               </Link>
             </div>
           </>
@@ -198,10 +200,10 @@ function SuccessContent() {
               color: '#D14A35',
               marginBottom: 12,
             }}>
-              Платёж не завершён
+              {t.billing.failedTitle}
             </h1>
             <p style={{ fontSize: 15, color: '#8B7355', marginBottom: 32, lineHeight: 1.6 }}>
-              Оплата не прошла. Вы можете попробовать ещё раз или выбрать другой способ оплаты.
+              {t.billing.failedDesc}
             </p>
             <Link
               href="/#pricing"
@@ -221,7 +223,7 @@ function SuccessContent() {
                 transition: 'background 0.2s, transform 0.15s',
               }}
             >
-              Попробовать снова
+              {t.billing.tryAgain}
             </Link>
           </>
         )}
@@ -236,10 +238,10 @@ function SuccessContent() {
               color: '#1A1A1A',
               marginBottom: 12,
             }}>
-              Не удалось получить статус
+              {t.billing.errorTitle}
             </h1>
             <p style={{ fontSize: 15, color: '#8B7355', marginBottom: 32, lineHeight: 1.6 }}>
-              Проверьте подключение и обновите страницу. Если оплата прошла, статус тарифа обновится автоматически.
+              {t.billing.errorDesc}
             </p>
             <button
               onClick={() => router.refresh()}
@@ -260,7 +262,7 @@ function SuccessContent() {
               onMouseEnter={e => { e.currentTarget.style.background = '#D14A35'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#E8604A'; }}
             >
-              Обновить страницу
+              {t.billing.refreshPage}
             </button>
           </>
         )}

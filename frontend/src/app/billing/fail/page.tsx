@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n, tf } from '@/lib/i18n';
 
 export default function BillingFailPage() {
   return (
@@ -14,6 +15,7 @@ export default function BillingFailPage() {
 
 function FailContent() {
   const params = useSearchParams();
+  const { t } = useI18n();
   const paymentId = params.get('payment');
 
   return (
@@ -41,10 +43,10 @@ function FailContent() {
           color: '#D14A35',
           marginBottom: 12,
         }}>
-          Платёж не завершён
+          {t.billing.failedTitle}
         </h1>
         <p style={{ fontSize: 15, color: '#8B7355', marginBottom: 32, lineHeight: 1.6 }}>
-          Что-то пошло не так при оплате. Средства не были списаны — вы можете попробовать ещё раз.
+          {t.billing.failDesc}
         </p>
         {paymentId && (
           <div style={{
@@ -53,7 +55,7 @@ function FailContent() {
             fontFamily: 'monospace',
             marginBottom: 24,
           }}>
-            Платёж №{paymentId}
+            {tf(t.billing.paymentId, { paymentId })}
           </div>
         )}
         <Link
@@ -74,7 +76,7 @@ function FailContent() {
             transition: 'background 0.2s, transform 0.15s',
           }}
         >
-          Попробовать снова
+          {t.billing.tryAgain}
         </Link>
       </div>
     </div>

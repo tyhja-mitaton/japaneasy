@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -43,8 +44,8 @@ type Meta = {
   total: number;
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('ru-RU', {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -55,6 +56,8 @@ function formatDate(iso: string): string {
 
 export default function Page() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
   const [items, setItems] = useState<Feedback[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
@@ -100,21 +103,21 @@ export default function Page() {
       setNotice(null);
     } catch (e: unknown) {
       const err = e as { message?: string };
-      setNotice(err?.message ?? 'Не удалось отправить ответ.');
+      setNotice(err?.message ?? t.admin.feedback.replyError);
     } finally {
       setSendingReply(false);
     }
   };
 
   const handleDelete = async (item: Feedback) => {
-    if (!confirm('Удалить обращение?')) return;
+    if (!confirm(t.admin.feedback.deleteConfirm)) return;
     try {
       await apiFetch(`/api/admin/feedback/${item.id}`, { method: 'DELETE' });
       setItems(prev => prev.filter(i => i.id !== item.id));
       if (items.length === 1 && page > 1) setPage(p => p - 1);
     } catch (e: unknown) {
       const err = e as { message?: string };
-      setNotice(err?.message ?? 'Не удалось удалить обращение.');
+      setNotice(err?.message ?? t.admin.feedback.deleteError);
     }
   };
 
@@ -147,7 +150,7 @@ export default function Page() {
           fontWeight: 500,
           color: BLUE,
         }}>
-          <span>⚙️</span> Админ-панель
+          <span>⚙️</span> {t.nav.adminPanel}
         </div>
         <h1 style={{
           fontFamily: "'Noto Serif JP'",
@@ -155,10 +158,10 @@ export default function Page() {
           fontWeight: 700,
           color: '#1A1A1A',
         }}>
-          Обратная связь
+          {t.admin.feedback.title}
         </h1>
         <div style={{ fontSize: 14, color: '#8B7355', marginTop: 4 }}>
-          Запросы от пользователей и гостей
+          {t.admin.feedback.desc}
         </div>
       </div>
 
@@ -183,7 +186,7 @@ export default function Page() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') runSearch(); }}
-          placeholder="Поиск по email или тексту…"
+          placeholder={t.admin.feedback.searchPlaceholder}
           style={{ ...fieldStyle, maxWidth: 340 }}
           onFocus={e => { e.currentTarget.style.borderColor = BLUE; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; }}
           onBlur={e => { e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.boxShadow = 'none'; }}
@@ -198,7 +201,7 @@ export default function Page() {
           onMouseEnter={e => { e.currentTarget.style.background = BLUE_HOVER; }}
           onMouseLeave={e => { e.currentTarget.style.background = BLUE; }}
         >
-          Найти
+          {t.admin.feedback.find}
         </button>
         {search && (
           <button
@@ -208,7 +211,7 @@ export default function Page() {
               padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
             }}
           >
-            Сбросить
+            {t.admin.feedback.reset}
           </button>
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
@@ -228,7 +231,7 @@ export default function Page() {
                 transition: 'all 0.2s',
               }}
             >
-              {f === 'all' ? 'Все' : 'Без ответа'}
+              {f === 'all' ? t.admin.feedback.all : t.admin.feedback.noReplyFilter}
             </button>
           ))}
         </div>
@@ -245,10 +248,10 @@ export default function Page() {
         }}>
           <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>💬</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-            {search ? 'Ничего не найдено' : filter === 'new' ? 'Нет неотвеченных обращений' : 'Нет обращений'}
+            {search ? t.admin.feedback.noResults : filter === 'new' ? t.admin.feedback.noUnanswered : t.admin.feedback.none}
           </div>
           <div style={{ fontSize: 14, color: '#8B7355' }}>
-            Обращения появятся после отправки формы обратной связи
+            {t.admin.feedback.noneHint}
           </div>
         </div>
       ) : (
@@ -289,7 +292,7 @@ export default function Page() {
                           textDecoration: 'none',
                         }}
                       >
-                        профиль #{item.meta.user_id}
+                        {tf(t.admin.feedback.profile, { id: item.meta.user_id })}
                       </a>
                     )}
                     {item.meta?.plan && (
@@ -305,14 +308,14 @@ export default function Page() {
                         fontSize: 11, fontWeight: 600, color: GREEN,
                         background: 'rgba(45,90,61,0.08)', padding: '3px 10px', borderRadius: 20,
                       }}>
-                        отвечено
+                        {t.admin.feedback.replied}
                       </span>
                     ) : (
                       <span style={{
                         fontSize: 11, fontWeight: 600, color: '#B45309',
                         background: 'rgba(217,119,6,0.1)', padding: '3px 10px', borderRadius: 20,
                       }}>
-                        без ответа
+                        {t.admin.feedback.noReply}
                       </span>
                     )}
                   </div>
@@ -323,7 +326,7 @@ export default function Page() {
                     {item.message}
                   </div>
                   <div style={{ fontSize: 12, color: '#B9A88F', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    <span>{formatDate(item.created_at)}</span>
+                    <span>{formatDate(item.created_at, locale)}</span>
                     {item.meta?.user_agent && (
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>
                         {item.meta.user_agent}
@@ -343,7 +346,7 @@ export default function Page() {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.08)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      {replyingId === item.id ? 'Отмена' : 'Ответить'}
+                      {replyingId === item.id ? t.admin.feedback.cancel : t.admin.feedback.reply}
                     </button>
                   )}
                   <button
@@ -356,7 +359,7 @@ export default function Page() {
                     onMouseEnter={e => { e.currentTarget.style.color = CORAL_HOVER; e.currentTarget.style.background = 'rgba(232,96,74,0.08)'; }}
                     onMouseLeave={e => { e.currentTarget.style.color = '#8B7355'; e.currentTarget.style.background = 'transparent'; }}
                   >
-                    Удалить
+                    {t.admin.feedback.delete}
                   </button>
                 </div>
               </div>
@@ -373,17 +376,17 @@ export default function Page() {
                       fontSize: 13, color: '#2D5A3D', marginBottom: 12, lineHeight: 1.5,
                       background: 'rgba(45,90,61,0.06)', borderRadius: 10, padding: '10px 14px',
                     }}>
-                      Ранее отправлен ответ: {item.admin_reply}
+                      {tf(t.admin.feedback.previouslyReplied, { reply: item.admin_reply })}
                     </div>
                   )}
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 8 }}>
-                    Ответ придёт на {item.email}
+                    {tf(t.admin.feedback.replyTo, { email: item.email })}
                   </div>
                   <textarea
                     rows={4}
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
-                    placeholder="Текст ответа…"
+                    placeholder={t.admin.feedback.replyPlaceholder}
                     style={{ ...fieldStyle, resize: 'vertical', fontFamily: "'Noto Sans JP', sans-serif" }}
                     onFocus={e => { e.currentTarget.style.borderColor = BLUE; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; }}
                     onBlur={e => { e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.boxShadow = 'none'; }}
@@ -399,7 +402,7 @@ export default function Page() {
                         cursor: sendingReply || !replyText.trim() ? 'not-allowed' : 'pointer',
                       }}
                     >
-                      {sendingReply ? 'Отправляем…' : 'Отправить ответ'}
+                      {sendingReply ? t.admin.feedback.sending : t.admin.feedback.sendReply}
                     </button>
                     <button
                       onClick={() => setReplyingId(null)}
@@ -408,7 +411,7 @@ export default function Page() {
                         padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
                       }}
                     >
-                      Отмена
+                      {t.admin.feedback.cancel}
                     </button>
                   </div>
                 </div>
@@ -434,7 +437,7 @@ export default function Page() {
               cursor: page === 1 ? 'not-allowed' : 'pointer',
             }}
           >
-            ← Назад
+            {t.admin.feedback.prev}
           </button>
           {Array.from({ length: meta.last_page }, (_, i) => i + 1).map(n => (
             <button
@@ -467,7 +470,7 @@ export default function Page() {
               cursor: page === meta.last_page ? 'not-allowed' : 'pointer',
             }}
           >
-            Далее →
+            {t.admin.feedback.next}
           </button>
         </div>
       )}

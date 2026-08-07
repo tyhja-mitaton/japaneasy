@@ -19,38 +19,52 @@ class PaymentController extends Controller
     public function __construct(private PaymentManager $paymentManager) {}
 
     // ── Доступные тарифы с актуальными ценами и лимитами ──────────────────────
-    public function plans(): JsonResponse
+    public function plans(Request $request): JsonResponse
     {
+        $lang = $request->query('lang') === 'en' ? 'en' : 'ru';
+
         return response()->json([
             'plans' => [
-                $this->planResource('free',     'Free',     0),
-                $this->planResource('standard', 'Standard', (int) Setting::get('plan_standard_price', 300)),
-                $this->planResource('premium',  'Premium',  (int) Setting::get('plan_premium_price', 490)),
+                $this->planResource('free',     'Free',     0, $lang),
+                $this->planResource('standard', 'Standard', (int) Setting::get('plan_standard_price', 300), $lang),
+                $this->planResource('premium',  'Premium',  (int) Setting::get('plan_premium_price', 490), $lang),
             ],
         ]);
     }
 
-    private function planResource(string $id, string $name, int $price): array
+    private function planResource(string $id, string $name, int $price, string $lang = 'ru'): array
     {
         $limits = PlanLimits::limitsForPlan($id);
 
+        $isEn = $lang === 'en';
+
         $features = [];
         if ($limits['texts'] !== null) {
-            $features[] = "До {$limits['texts']} текстов в месяц";
+            $features[] = $isEn
+                ? "Up to {$limits['texts']} texts per month"
+                : "До {$limits['texts']} текстов в месяц";
         } else {
-            $features[] = 'Безлимит текстов в месяц';
+            $features[] = $isEn ? 'Unlimited texts per month' : 'Безлимит текстов в месяц';
         }
         if ($limits['vocabulary'] !== null) {
-            $features[] = "Словарь до {$limits['vocabulary']} слов";
+            $features[] = $isEn
+                ? "Vocabulary up to {$limits['vocabulary']} words"
+                : "Словарь до {$limits['vocabulary']} слов";
         } else {
-            $features[] = 'Безлимитный словарь';
+            $features[] = $isEn ? 'Unlimited vocabulary' : 'Безлимитный словарь';
+        }
+
+        // Для английского интерфейса конвертируем цены в доллары
+        if ($isEn && $price > 0) {
+            $usdRate = (float) Setting::get('usd_rate', 90);
+            $price   = round($price / $usdRate, 2);
         }
 
         return [
             'id'       => $id,
             'name'     => $name,
             'price'    => $price,
-            'currency' => 'RUB',
+            'currency' => $isEn ? 'USD' : 'RUB',
             'features' => $features,
             'limits'   => [
                 'texts'      => $limits['texts'],

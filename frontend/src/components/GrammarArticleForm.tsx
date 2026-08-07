@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -53,6 +54,7 @@ type MarkdownEditorProps = {
 };
 
 function MarkdownEditorField({ name, label, value, placeholder, required, preview, onTogglePreview, onChange }: MarkdownEditorProps) {
+    const { t } = useI18n();
     return (
         <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -79,7 +81,7 @@ function MarkdownEditorField({ name, label, value, placeholder, required, previe
                     onMouseEnter={e => e.currentTarget.style.color = '#1D4ED8'}
                     onMouseLeave={e => e.currentTarget.style.color = '#2563EB'}
                 >
-                    {preview ? 'Редактировать' : 'Предпросмотр'}
+                    {preview ? t.grammarForm.previewEdit : t.grammarForm.previewShow}
                 </button>
             </div>
 
@@ -122,6 +124,7 @@ function MarkdownEditorField({ name, label, value, placeholder, required, previe
 // Если props.articleId передан — режим редактирования.
 export default function GrammarArticleForm({ articleId }: { articleId?: number }) {
     const router = useRouter();
+    const { t } = useI18n();
     const [form, setForm] = useState({ title: '', code: '', info: '', text: '', pattern: '', title_en: '', info_en: '', text_en: '' });
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -160,7 +163,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
             router.push('/admin/grammar');
         } catch (err: unknown) {
             const error = err as { message?: string };
-            setError(error.message || 'Произошла ошибка.');
+            setError(error.message || t.grammarForm.errorGeneric);
         } finally {
             setLoading(false);
         }
@@ -189,7 +192,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                         onMouseEnter={e => e.currentTarget.style.color = '#2563EB'}
                         onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                     >
-                        ← К списку статей
+                        ← {t.grammarForm.backToList}
                     </button>
                     <h1 style={{
                         fontFamily: "'Noto Serif JP'",
@@ -197,7 +200,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                         fontWeight: 700,
                         color: '#1A1A1A',
                     }}>
-                        {isEdit ? 'Редактирование статьи' : 'Новая статья'}
+                        {isEdit ? t.grammarForm.editTitle : t.grammarForm.newTitle}
                     </h1>
                 </div>
             </div>
@@ -234,14 +237,14 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                                 color: '#1A1A1A',
                                 marginBottom: 8,
                             }}>
-                                Заголовок
+                                {t.grammar.titleField}
                             </label>
                             <input
                                 name="title"
                                 required
                                 value={form.title}
                                 onChange={handleChange}
-                                placeholder="Частица は"
+                                placeholder={t.grammarForm.titlePlaceholder}
                                 style={inputStyle}
                                 onFocus={e => e.target.style.borderColor = '#2563EB'}
                                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
@@ -255,7 +258,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                                 color: '#1A1A1A',
                                 marginBottom: 8,
                             }}>
-                                Код <span style={{ color: '#8B7355', fontWeight: 400 }}>(уникальный, a-z, 0-9, дефис)</span>
+                                {t.grammar.codeField} <span style={{ color: '#8B7355', fontWeight: 400 }}>{t.grammarForm.codeHint}</span>
                             </label>
                             <input
                                 name="code"
@@ -280,7 +283,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                             color: '#1A1A1A',
                             marginBottom: 8,
                         }}>
-                            Заголовок (EN)
+                            {t.grammar.titleEnField}
                         </label>
                         <input
                             name="title_en"
@@ -302,7 +305,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                             color: '#1A1A1A',
                             marginBottom: 8,
                         }}>
-                            Паттерн
+                            {t.grammar.patternField}
                         </label>
                         <input
                             name="pattern"
@@ -324,13 +327,13 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                             color: '#1A1A1A',
                             marginBottom: 8,
                         }}>
-                            Краткое описание
+                            {t.grammar.infoField}
                         </label>
                         <input
                             name="info"
                             value={form.info}
                             onChange={handleChange}
-                            placeholder="Краткое описание паттерна"
+                            placeholder={t.grammarForm.infoPlaceholder}
                             style={inputStyle}
                             onFocus={e => e.target.style.borderColor = '#2563EB'}
                             onBlur={e => e.target.style.borderColor = '#EDE8E1'}
@@ -346,7 +349,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                             color: '#1A1A1A',
                             marginBottom: 8,
                         }}>
-                            Краткое описание (EN)
+                            {t.grammar.infoEnField}
                         </label>
                         <input
                             name="info_en"
@@ -362,9 +365,9 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                     {/* Markdown editor (RU) */}
                     <MarkdownEditorField
                         name="text"
-                        label="Текст статьи (Markdown)"
+                        label={t.grammar.textField}
                         value={form.text}
-                        placeholder={`## Частица は\n\nは (wa) — частица темы в японском языке...\n\n### Использование\n\n- Паттерн: \`X は Y です\`\n- Пример: 私は学生です。`}
+                        placeholder={t.grammarForm.textPlaceholder}
                         required
                         preview={preview}
                         onTogglePreview={() => setPreview(p => !p)}
@@ -374,7 +377,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                     {/* Markdown editor (EN) */}
                     <MarkdownEditorField
                         name="text_en"
-                        label="Текст статьи EN (Markdown)"
+                        label={t.grammar.textEnField}
                         value={form.text_en}
                         placeholder={`## Particle は\n\nは (wa) is the topic particle in Japanese...\n\n### Usage\n\n- Pattern: \`X は Y です\`\n- Example: 私は学生です。`}
                         preview={previewEn}
@@ -411,7 +414,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                                 }
                             }}
                         >
-                            {loading ? 'Сохранение…' : isEdit ? 'Сохранить изменения' : 'Создать статью'}
+                            {loading ? t.grammar.saving : isEdit ? t.grammar.update : t.grammar.create}
                         </button>
                         <button
                             type="button"
@@ -436,7 +439,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                                 e.currentTarget.style.color = '#8B7355';
                             }}
                         >
-                            Отмена
+                            {t.grammar.cancel}
                         </button>
                     </div>
                 </form>
@@ -447,10 +450,11 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
 
 // Lazy markdown preview
 function MarkdownPreview({ text }: { text: string }) {
+    const { t } = useI18n();
     const [ReactMarkdown, setRM] = useState<MarkdownComponent | null>(null);
     useEffect(() => {
         import('react-markdown').then(m => setRM(() => m.default));
     }, []);
-    if (!ReactMarkdown) return <span style={{ color: '#8B7355', fontSize: 14 }}>Загрузка предпросмотра…</span>;
+    if (!ReactMarkdown) return <span style={{ color: '#8B7355', fontSize: 14 }}>{t.grammarForm.previewLoading}</span>;
     return <ReactMarkdown>{text}</ReactMarkdown>;
 }

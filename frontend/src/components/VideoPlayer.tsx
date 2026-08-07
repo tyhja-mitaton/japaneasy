@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { parseVtt, VttCue } from '@/lib/vtt-parser';
+import { useI18n } from '@/lib/i18n';
 
 interface SubtitleTrack {
   id:         number;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
+  const { t } = useI18n();
   const videoRef          = useRef<HTMLVideoElement>(null);
   const containerRef      = useRef<HTMLDivElement>(null);
 
@@ -350,7 +352,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
         {/* Навигация по фразам */}
         <button
           onClick={gotoPrevCue}
-          title="Предыдущая фраза (←)"
+          title={t.videoPlayer.prevPhrase}
           style={navButtonStyle}
           onMouseEnter={e => { e.currentTarget.style.color = '#E8604A'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.background = 'transparent'; }}
@@ -370,7 +372,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
 
         <button
           onClick={gotoNextCue}
-          title="Следующая фраза (→)"
+          title={t.videoPlayer.nextPhrase}
           style={navButtonStyle}
           onMouseEnter={e => { e.currentTarget.style.color = '#E8604A'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
           onMouseLeave={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.background = 'transparent'; }}
@@ -395,7 +397,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
         {/* Автопауза */}
         <button
           onClick={() => setAutoPause(p => !p)}
-          title="Автопауза после каждой фразы (J)"
+          title={t.videoPlayer.autoPauseHint}
           style={{
             ...chipBaseStyle,
             ...(autoPause
@@ -409,7 +411,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
             if (!autoPause) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }
           }}
         >
-          ⏸ Автопауза
+          ⏸ {t.videoPlayer.autoPause}
         </button>
 
         {/* Субтитры — переключатель трека */}
@@ -417,7 +419,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button
               onClick={() => setShowSubtitles(p => !p)}
-              title="Показать/скрыть субтитры (L)"
+              title={t.videoPlayer.subtitlesToggle}
               style={{
                 ...chipBaseStyle,
                 ...(showSubtitles
@@ -464,7 +466,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => setMuted(m => !m)}
-            title={muted ? 'Включить звук' : 'Выключить звук'}
+            title={muted ? t.videoPlayer.unmute : t.videoPlayer.mute}
             style={{
               ...chipBaseStyle,
               fontSize: 14,
@@ -507,11 +509,11 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
         fontSize: 12,
       }}>
         {[
-          ['←', 'пред. фраза'],
-          ['→', 'след. фраза'],
-          ['J', 'автопауза'],
-          ['L', 'субтитры'],
-          ['Пробел', 'плей/пауза'],
+          ['←', t.videoPlayer.kPrev],
+          ['→', t.videoPlayer.kNext],
+          ['J', t.videoPlayer.kAutoPause],
+          ['L', t.videoPlayer.kSubtitles],
+          [t.videoPlayer.spaceKey, t.videoPlayer.kSpace],
         ].map(([key, label]) => (
           <span key={key}><kbd style={{ fontFamily: 'monospace' }}>{key}</kbd> {label}</span>
         ))}

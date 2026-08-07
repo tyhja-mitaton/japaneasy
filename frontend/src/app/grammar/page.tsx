@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useI18n } from '@/lib/i18n';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -24,7 +24,7 @@ const GREEN = '#2D5A3D';
 
 export default function GrammarIndexPage() {
   const router = useRouter();
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const [articles, setArticles] = useState<Article[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
@@ -65,7 +65,7 @@ export default function GrammarIndexPage() {
           fontWeight: 500,
           color: GREEN,
         }}>
-          <span>📖</span> Грамматика
+          <span>📖</span> {t.nav.grammar}
         </div>
         <h1 style={{
           fontFamily: "'Noto Serif JP'",
@@ -74,10 +74,10 @@ export default function GrammarIndexPage() {
           color: '#1A1A1A',
           marginBottom: 8,
         }}>
-          Справочник по японской грамматике
+          {t.grammar.indexTitle}
         </h1>
         <p style={{ fontSize: 15, color: '#8B7355' }}>
-          Разборы конструкций и частиц. Выберите тему, чтобы прочитать статью.
+          {t.grammar.indexSubtitle}
         </p>
       </div>
 
@@ -87,7 +87,7 @@ export default function GrammarIndexPage() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') runSearch(); }}
-          placeholder="Поиск по названию или коду…"
+          placeholder={t.grammar.searchPlaceholder}
           style={{
             width: '100%',
             maxWidth: 360,
@@ -114,7 +114,7 @@ export default function GrammarIndexPage() {
           onMouseEnter={e => { e.currentTarget.style.background = '#244D33'; }}
           onMouseLeave={e => { e.currentTarget.style.background = GREEN; }}
         >
-          Найти
+          {t.grammar.find}
         </button>
         {search && (
           <button
@@ -125,14 +125,14 @@ export default function GrammarIndexPage() {
               fontFamily: 'inherit',
             }}
           >
-            Сбросить
+            {t.grammar.reset}
           </button>
         )}
       </div>
 
       {/* Articles list */}
       {loading ? (
-        <div style={{ fontSize: 14, color: '#8B7355', padding: '24px 0' }}>Загрузка…</div>
+        <div style={{ fontSize: 14, color: '#8B7355', padding: '24px 0' }}>{t.common.loading}</div>
       ) : articles.length === 0 && meta ? (
         <div style={{
           background: 'white',
@@ -148,10 +148,10 @@ export default function GrammarIndexPage() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            {search ? 'Ничего не найдено' : 'Нет статей'}
+            {search ? t.grammar.nothingFound : t.grammar.noArticlesIndex}
           </div>
           <div style={{ fontSize: 14, color: '#8B7355' }}>
-            {search ? 'Попробуйте изменить поисковый запрос' : 'Статьи появятся здесь после публикации'}
+            {search ? t.grammar.searchHint : t.grammar.articlesHint}
           </div>
         </div>
       ) : (
@@ -270,7 +270,7 @@ export default function GrammarIndexPage() {
               e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.background = 'none';
             }}
           >
-            ← Назад
+            {t.grammar.back}
           </button>
 
           {Array.from({ length: meta.last_page }, (_, i) => i + 1).map(n => (
@@ -321,7 +321,7 @@ export default function GrammarIndexPage() {
               e.currentTarget.style.borderColor = '#EDE8E1'; e.currentTarget.style.background = 'none';
             }}
           >
-            Далее →
+            {t.grammar.next}
           </button>
         </div>
       )}
@@ -340,7 +340,7 @@ export default function GrammarIndexPage() {
             padding: '8px 16px',
             borderRadius: 20,
           }}>
-            Всего статей: {meta.total}
+            {tf(t.grammar.totalArticles, { total: meta.total })}
           </div>
         </div>
       )}

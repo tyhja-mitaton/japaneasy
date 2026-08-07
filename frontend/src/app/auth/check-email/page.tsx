@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { authApi } from '@/lib/auth-api';
+import { useI18n } from '@/lib/i18n';
 
 export default function Page() {
+  const { t } = useI18n();
   const [resent, setResent] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +47,7 @@ export default function Page() {
           color: '#1A1A1A',
           marginBottom: 12,
         }}>
-          Проверьте почту
+          {t.auth.checkEmail}
         </h1>
         <p style={{
           fontSize: 15,
@@ -53,8 +55,7 @@ export default function Page() {
           marginBottom: 32,
           lineHeight: 1.6,
         }}>
-          Мы отправили ссылку для подтверждения на ваш email.
-          Нажмите на неё для активации аккаунта.
+          {t.auth.checkEmailBody}
         </p>
 
         {resent ? (
@@ -66,7 +67,7 @@ export default function Page() {
             fontSize: 14,
             marginBottom: 24,
           }}>
-            Письмо отправлено повторно!
+            {t.auth.resentSuccess}
           </div>
         ) : (
           <button
@@ -86,7 +87,7 @@ export default function Page() {
             onMouseEnter={e => e.currentTarget.style.color = '#E8604A'}
             onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
           >
-            {loading ? 'Отправка…' : 'Не получили? Отправить повторно'}
+            {loading ? t.auth.sending : t.auth.resendAsk}
           </button>
         )}
 
@@ -112,7 +113,7 @@ export default function Page() {
               transition: 'background 0.2s, transform 0.15s',
             }}
           >
-            Войти в аккаунт
+            {t.auth.goToLogin}
           </Link>
         </div>
       </div>

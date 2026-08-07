@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -46,14 +47,6 @@ const LANG_FLAG: Record<string, string> = {
   ru: '🇷🇺', en: '🇬🇧', de: '🇩🇪', fr: '🇫🇷', zh: '🇨🇳',
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  idle: 'Не импортирован',
-  pending: 'В очереди',
-  processing: 'Импорт',
-  completed: 'Готово',
-  failed: 'Ошибка',
-};
-
 function statusColor(status: string): string {
   switch (status) {
     case 'completed': return GREEN;
@@ -81,6 +74,8 @@ function fieldStyle(): React.CSSProperties {
 
 export default function Page() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
   const [dicts, setDicts] = useState<Dict[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
@@ -140,7 +135,7 @@ export default function Page() {
       }, 60000);
     } catch (e: unknown) {
       const err = e as { message?: string };
-      setNotice(err?.message ?? 'Не удалось запустить импорт.');
+      setNotice(err?.message ?? t.admin.dictionaries.importError);
     } finally {
       setImporting(false);
     }
@@ -156,7 +151,7 @@ export default function Page() {
       });
     } catch {
       setDicts(prev);
-      setNotice('Не удалось обновить словарь.');
+      setNotice(t.admin.dictionaries.updateError);
     }
   };
 
@@ -180,20 +175,20 @@ export default function Page() {
       setDicts(prev => prev.map(d => d.id === dict.id ? { ...d, ...updated } : d));
       setEditingId(null);
     } catch {
-      setNotice('Не удалось сохранить изменения.');
+      setNotice(t.admin.dictionaries.saveError);
     } finally {
       setSavingEdit(false);
     }
   };
 
   const handleDelete = async (dict: Dict) => {
-    if (!confirm(`Удалить словарь «${dict.name}»?`)) return;
+    if (!confirm(tf(t.admin.dictionaries.deleteConfirm, { name: dict.name }))) return;
     try {
       await apiFetch(`/api/admin/dictionaries/${dict.id}`, { method: 'DELETE' });
       setDicts(prev => prev.filter(d => d.id !== dict.id));
     } catch (e: unknown) {
       const err = e as { message?: string };
-      setNotice(err?.message ?? 'Не удалось удалить словарь.');
+      setNotice(err?.message ?? t.admin.dictionaries.deleteError);
     }
   };
 
@@ -214,7 +209,7 @@ export default function Page() {
             fontWeight: 500,
             color: BLUE,
           }}>
-            <span>⚙️</span> Админ-панель
+            <span>⚙️</span> {t.nav.adminPanel}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -222,10 +217,10 @@ export default function Page() {
             fontWeight: 700,
             color: '#1A1A1A',
           }}>
-            Словари
+            {t.admin.dictionaries.title}
           </h1>
           <div style={{ fontSize: 14, color: '#8B7355', marginTop: 4 }}>
-            Импорт, активация и приоритеты словарей
+            {t.admin.dictionaries.desc}
           </div>
         </div>
         <button
@@ -247,7 +242,7 @@ export default function Page() {
           onMouseEnter={e => { e.currentTarget.style.background = BLUE_HOVER; e.currentTarget.style.transform = 'translateY(-1px)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = BLUE; e.currentTarget.style.transform = 'translateY(0)'; }}
         >
-          {showImport ? 'Скрыть импорт' : '+ Импорт словаря'}
+          {showImport ? t.admin.dictionaries.hideImport : t.admin.dictionaries.importDict}
         </button>
       </div>
 
@@ -276,10 +271,10 @@ export default function Page() {
           marginBottom: 24,
         }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 4 }}>
-            Импорт словаря
+            {t.admin.dictionaries.importTitle}
           </div>
           <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 16 }}>
-            Укажите путь к папке на сервере, содержащей index.json
+            {t.admin.dictionaries.importHint}
           </div>
           <input
             value={importPath}
@@ -296,7 +291,7 @@ export default function Page() {
               onChange={e => setImportForce(e.target.checked)}
               style={{ width: 16, height: 16, cursor: 'pointer' }}
             />
-            Принудительный переимпорт (force)
+            {t.admin.dictionaries.forceReimport}
           </label>
           <button
             onClick={startImport}
@@ -316,7 +311,7 @@ export default function Page() {
             onMouseEnter={e => { if (importPath.trim() && !importing) e.currentTarget.style.background = BLUE_HOVER; }}
             onMouseLeave={e => { e.currentTarget.style.background = BLUE; }}
           >
-            {importing ? 'Запускаем…' : 'Запустить импорт'}
+            {importing ? t.admin.dictionaries.starting : t.admin.dictionaries.startImport}
           </button>
         </div>
       )}
@@ -328,7 +323,7 @@ export default function Page() {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>⏳</div>
-            Загрузка…
+            {t.common.loading}
           </div>
         </div>
       ) : dicts.length === 0 ? (
@@ -341,10 +336,10 @@ export default function Page() {
         }}>
           <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>📚</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-            Нет словарей
+            {t.admin.dictionaries.noDicts}
           </div>
           <div style={{ fontSize: 14, color: '#8B7355', marginBottom: 24 }}>
-            Запустите импорт первого словаря
+            {t.admin.dictionaries.noDictsHint}
           </div>
           <button
             onClick={() => setShowImport(true)}
@@ -353,7 +348,7 @@ export default function Page() {
               padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}
           >
-            Запустить импорт
+            {t.admin.dictionaries.startImport}
           </button>
         </div>
       ) : (
@@ -390,20 +385,20 @@ export default function Page() {
                       </span>
                     </div>
                     <div style={{ fontSize: 13, color: '#8B7355', marginTop: 6 }}>
-                      {dict.target_lang.toUpperCase()} · {dict.entries_count.toLocaleString('ru-RU')} записей · приоритет {dict.default_priority}
+                      {dict.target_lang.toUpperCase()} · {tf(t.admin.dictionaries.entries, { count: dict.entries_count.toLocaleString(locale) })} · {tf(t.admin.dictionaries.priority, { n: dict.default_priority })}
                     </div>
                     {dict.import_status !== 'idle' && (
                       <div style={{ marginTop: 8 }}>
                         {dict.import_status === 'processing' && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                             <span style={{ fontSize: 12, fontWeight: 600, color: statusColor(dict.import_status) }}>
-                              Импорт: {dict.import_progress}%
+                              {tf(t.admin.dictionaries.importing, { n: dict.import_progress })}
                             </span>
                           </div>
                         )}
                         {dict.import_status !== 'processing' && (
                           <div style={{ fontSize: 12, fontWeight: 600, color: statusColor(dict.import_status), marginBottom: 6 }}>
-                            {STATUS_LABEL[dict.import_status]}
+                            {t.admin.dictionaries['status' + dict.import_status.charAt(0).toUpperCase() + dict.import_status.slice(1) as 'statusIdle' | 'statusPending' | 'statusProcessing' | 'statusCompleted' | 'statusFailed']}
                           </div>
                         )}
                         {dict.import_status !== 'processing' && (
@@ -438,7 +433,7 @@ export default function Page() {
                       cursor: 'pointer',
                       transition: 'background 0.2s',
                     }}
-                    title={dict.is_active ? 'Деактивировать' : 'Активировать'}
+                    title={dict.is_active ? t.admin.dictionaries.deactivate : t.admin.dictionaries.activate}
                   >
                     <span style={{
                       position: 'absolute',
@@ -462,7 +457,7 @@ export default function Page() {
                       transition: 'background 0.2s',
                     }}
                   >
-                    Подробнее
+                    {t.admin.dictionaries.details}
                   </Link>
                   <button
                     onClick={() => editingId === dict.id ? setEditingId(null) : openEdit(dict)}
@@ -474,7 +469,7 @@ export default function Page() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    {editingId === dict.id ? 'Отмена' : 'Изменить'}
+                    {editingId === dict.id ? t.admin.dictionaries.cancel : t.admin.dictionaries.edit}
                   </button>
                   <button
                     onClick={() => handleDelete(dict)}
@@ -486,7 +481,7 @@ export default function Page() {
                     onMouseEnter={e => { e.currentTarget.style.color = CORAL_HOVER; e.currentTarget.style.background = 'rgba(232,96,74,0.08)'; }}
                     onMouseLeave={e => { e.currentTarget.style.color = '#8B7355'; e.currentTarget.style.background = 'transparent'; }}
                   >
-                    Удалить
+                    {t.admin.dictionaries.delete}
                   </button>
                 </div>
               </div>
@@ -504,7 +499,7 @@ export default function Page() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>
-                        Название
+                        {t.admin.dictionaries.nameField}
                       </label>
                       <input
                         value={editName}
@@ -516,7 +511,7 @@ export default function Page() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>
-                        Приоритет по умолчанию
+                        {t.admin.dictionaries.priorityField}
                       </label>
                       <input
                         type="number"
@@ -539,7 +534,7 @@ export default function Page() {
                         cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.5 : 1,
                       }}
                     >
-                      {savingEdit ? 'Сохраняем…' : 'Сохранить'}
+                      {savingEdit ? t.common.saving : t.common.save}
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
@@ -548,7 +543,7 @@ export default function Page() {
                         padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
                       }}
                     >
-                      Отмена
+                      {t.admin.dictionaries.cancel}
                     </button>
                   </div>
                 </div>
@@ -565,14 +560,14 @@ export default function Page() {
             fontSize: 13, color: '#8B7355', background: 'rgba(59,130,246,0.06)',
             padding: '8px 16px', borderRadius: 20,
           }}>
-            Всего словарей: {dicts.length}
+            {tf(t.admin.dictionaries.total, { count: dicts.length })}
           </div>
           {isImporting && (
             <div style={{
               fontSize: 13, color: BLUE, background: 'rgba(59,130,246,0.06)',
               padding: '8px 16px', borderRadius: 20,
             }}>
-              Идёт импорт — статус обновляется автоматически
+              {t.admin.dictionaries.importingLive}
             </div>
           )}
         </div>

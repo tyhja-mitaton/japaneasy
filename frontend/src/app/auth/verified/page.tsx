@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useI18n } from '@/lib/i18n';
 
 type StatusContent = {
   icon: string;
@@ -21,16 +22,17 @@ export default function VerifiedPage() {
 
 function VerifiedContent() {
     const params = useSearchParams();
+    const { t } = useI18n();
     const status = params.get('status');
 
     const content: StatusContent = (() => {
         switch (status) {
             case 'success':
-                return { icon: '✅', title: 'Email подтверждён!', text: 'Ваш аккаунт активен. Теперь вы можете войти.', color: '#2D5A3D' };
+                return { icon: '✅', title: t.auth.emailVerified, text: t.auth.verifiedActive, color: '#2D5A3D' };
             case 'expired':
-                return { icon: '⏰', title: 'Ссылка истекла', text: 'Запросите новое письмо для подтверждения.', color: '#E8604A' };
+                return { icon: '⏰', title: t.auth.expiredTitle, text: t.auth.expiredHint, color: '#E8604A' };
             default:
-                return { icon: '❌', title: 'Неверная ссылка', text: 'Эта ссылка для подтверждения недействительна.', color: '#D14A35' };
+                return { icon: '❌', title: t.auth.invalidTitle, text: t.auth.invalidHint, color: '#D14A35' };
         }
     })();
 
@@ -87,7 +89,7 @@ function VerifiedContent() {
                         transition: 'background 0.2s, transform 0.15s',
                     }}
                 >
-                    Войти в аккаунт
+                    {t.auth.goToLogin}
                 </Link>
             </div>
         </div>

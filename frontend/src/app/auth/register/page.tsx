@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authApi } from '@/lib/auth-api';
 import { detectCountry } from '@/lib/detect-country';
+import { useI18n } from '@/lib/i18n';
 
 export default function Page() {
   const router = useRouter();
+  const { t } = useI18n();
   const [form, setForm] = useState({
     name: '', email: '', password: '', password_confirmation: '',
     country: undefined as string | undefined,
@@ -34,7 +36,7 @@ export default function Page() {
       router.push('/auth/check-email');
     } catch (err: unknown) {
       const error = err as { message?: string };
-      setError(error.message || 'Ошибка регистрации. Попробуйте снова.');
+      setError(error.message || t.auth.registerFailed);
     } finally {
       setLoading(false);
     }
@@ -76,7 +78,7 @@ export default function Page() {
             fontWeight: 500,
             color: '#E8604A',
           }}>
-            <span>🌸</span> Начните учить японский
+            <span>🌸</span> {t.auth.registerBadge}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -85,13 +87,13 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Создать аккаунт
+            {t.auth.register}
           </h1>
           <p style={{
             fontSize: 15,
             color: '#8B7355',
           }}>
-            Бесплатно и без ограничений
+            {t.auth.registerSubtitle}
           </p>
         </div>
 
@@ -124,7 +126,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Имя
+                {t.auth.name}
               </label>
               <input
                 name="name"
@@ -133,7 +135,7 @@ export default function Page() {
                 value={form.name}
                 onChange={handleChange}
                 style={inputStyle}
-                placeholder="Ваше имя"
+                placeholder={t.auth.yourName}
                 onFocus={e => e.target.style.borderColor = '#E8604A'}
                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
               />
@@ -147,7 +149,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Email
+                {t.auth.email}
               </label>
               <input
                 name="email"
@@ -170,7 +172,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Пароль
+                {t.auth.password}
               </label>
               <input
                 name="password"
@@ -179,7 +181,7 @@ export default function Page() {
                 value={form.password}
                 onChange={handleChange}
                 style={inputStyle}
-                placeholder="Минимум 8 символов"
+                placeholder={t.auth.minPassword}
                 onFocus={e => e.target.style.borderColor = '#E8604A'}
                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
               />
@@ -193,7 +195,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Подтвердите пароль
+                {t.auth.confirmPassword}
               </label>
               <input
                 name="password_confirmation"
@@ -202,7 +204,7 @@ export default function Page() {
                 value={form.password_confirmation}
                 onChange={handleChange}
                 style={inputStyle}
-                placeholder="Повторите пароль"
+                placeholder={t.auth.confirmPassword}
                 onFocus={e => e.target.style.borderColor = '#E8604A'}
                 onBlur={e => e.target.style.borderColor = '#EDE8E1'}
               />
@@ -236,7 +238,7 @@ export default function Page() {
                 }
               }}
             >
-              {loading ? 'Создание…' : 'Создать аккаунт'}
+              {loading ? t.auth.creating : t.auth.register}
             </button>
           </form>
         </div>
@@ -248,7 +250,7 @@ export default function Page() {
           fontSize: 14,
           color: '#8B7355',
         }}>
-          Уже есть аккаунт?{' '}
+          {t.auth.hasAccount}{' '}
           <Link
             href="/auth/login"
             style={{
@@ -257,7 +259,7 @@ export default function Page() {
               fontWeight: 500,
             }}
           >
-            Войти
+            {t.auth.login}
           </Link>
         </p>
       </div>

@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/auth-api';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function Page() {
   const router = useRouter();
+  const { t } = useI18n();
   const [user, setUser] = useState<{ id: number; email: string } | null | undefined>(undefined);
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
@@ -52,12 +54,12 @@ export default function Page() {
       const data = await res.json();
       if (!res.ok) {
         const err = data as { message?: string | string[]; errors?: Record<string, string[]> };
-        setError(typeof err.message === 'string' ? err.message : 'Не удалось отправить сообщение.');
+        setError(typeof err.message === 'string' ? err.message : t.feedback.errorSend);
         return;
       }
       setSent(true);
     } catch {
-      setError('Ошибка сети. Попробуйте ещё раз.');
+      setError(t.feedback.errorNetwork);
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ export default function Page() {
             fontWeight: 500,
             color: '#E8604A',
           }}>
-            <span>💬</span> Обратная связь
+            <span>💬</span> {t.feedback.badge}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -108,10 +110,10 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Напишите нам
+            {t.feedback.title}
           </h1>
           <p style={{ fontSize: 15, color: '#8B7355' }}>
-            Идеи, вопросы или проблемы — мы ответим в течение пары дней
+            {t.feedback.subtitle}
           </p>
         </div>
 
@@ -125,10 +127,10 @@ export default function Page() {
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-              Спасибо!
+              {t.feedback.thanks}
             </div>
             <div style={{ fontSize: 14, color: '#8B7355', marginBottom: 24, lineHeight: 1.6 }}>
-              Ваше обращение отправлено. Ответ придёт на почту, указанную в профиле.
+              {t.feedback.thanksDesc}
             </div>
             <button
               onClick={() => router.push('/')}
@@ -146,7 +148,7 @@ export default function Page() {
               onMouseEnter={e => e.currentTarget.style.background = '#D14A35'}
               onMouseLeave={e => e.currentTarget.style.background = '#E8604A'}
             >
-              На главную
+              {t.feedback.toHome}
             </button>
           </div>
         ) : (
@@ -179,7 +181,7 @@ export default function Page() {
                     color: '#1A1A1A',
                     marginBottom: 8,
                   }}>
-                    Email для ответа
+                    {t.feedback.emailLabel}
                   </label>
                   <input
                     name="email"
@@ -203,7 +205,7 @@ export default function Page() {
                   color: '#1A1A1A',
                   marginBottom: 8,
                 }}>
-                  Сообщение
+                  {t.feedback.messageLabel}
                 </label>
                 <textarea
                   name="message"
@@ -216,7 +218,7 @@ export default function Page() {
                     resize: 'vertical',
                     fontFamily: "'Noto Sans JP', sans-serif",
                   }}
-                  placeholder="Расскажите, что у вас на уме…"
+                  placeholder={t.feedback.messagePlaceholder}
                   onFocus={e => e.target.style.borderColor = '#E8604A'}
                   onBlur={e => e.target.style.borderColor = '#EDE8E1'}
                 />
@@ -250,7 +252,7 @@ export default function Page() {
                   }
                 }}
               >
-                {loading ? 'Отправляем…' : 'Отправить'}
+                {loading ? t.feedback.sending : t.feedback.send}
               </button>
             </form>
           </div>

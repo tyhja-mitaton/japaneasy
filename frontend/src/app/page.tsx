@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -25,10 +26,10 @@ type Me = {
 
 // Периоды оплаты — зеркалит расчёт на бэкенде (PaymentController::initiate)
 const PERIODS = [
-  { id: '1m',  label: '1 месяц',   months: 1,  discount: 0.00 },
-  { id: '3m',  label: '3 месяца',  months: 3,  discount: 0.05 },
-  { id: '6m',  label: '6 месяцев', months: 6,  discount: 0.10 },
-  { id: '12m', label: '12 месяцев', months: 12, discount: 0.15 },
+  { id: '1m',  months: 1,  discount: 0.00 },
+  { id: '3m',  months: 3,  discount: 0.05 },
+  { id: '6m',  months: 6,  discount: 0.10 },
+  { id: '12m', months: 12, discount: 0.15 },
 ] as const;
 
 type PeriodId = typeof PERIODS[number]['id'];
@@ -41,6 +42,8 @@ const PLAN_COLORS: Record<string, string> = {
 
 export default function Page() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
   const [plans, setPlans] = useState<Plan[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [periodId, setPeriodId] = useState<PeriodId>('1m');
@@ -51,14 +54,21 @@ export default function Page() {
 
   const period = PERIODS.find(p => p.id === periodId)!;
 
+  const periodLabel = {
+    '1m': t.landing.period1m,
+    '3m': t.landing.period3m,
+    '6m': t.landing.period6m,
+    '12m': t.landing.period12m,
+  } as const;
+
   useEffect(() => {
-    fetch(`${API_URL}/api/plans`, { headers: { Accept: 'application/json' } })
+    fetch(`${API_URL}/api/plans?lang=${lang}`, { headers: { Accept: 'application/json' } })
       .then(res => res.json())
       .then(data => {
         setPlans(data.plans ?? []);
         setNow(Date.now());
       })
-      .catch(() => setPlansError('Не удалось загрузить тарифы'));
+      .catch(() => setPlansError(t.landing.plansLoadError));
 
     const token = localStorage.getItem('token');
     if (token) {
@@ -76,11 +86,13 @@ export default function Page() {
         })
         .catch(() => {});
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   const priceFor = (base: number) => Math.round(base * period.months * (1 - period.discount));
 
-  const formatPrice = (n: number) => n.toLocaleString('ru-RU') + ' ₽';
+  const formatPrice = (n: number, currency: string) =>
+    n.toLocaleString(locale) + (currency === 'USD' ? ' $' : ' ₽');
 
   const hasActivePaid =
     !!me?.plan
@@ -119,16 +131,16 @@ export default function Page() {
       const data = await res.json();
       window.location.assign(data.redirect_url);
     } catch {
-      setPlansError('Не удалось начать оплату. Попробуйте ещё раз.');
+      setPlansError(t.landing.checkoutError);
       setCheckingOut(null);
     }
   };
 
   return (
-    <div>
+      <div>
 
-      {/* ── Styles ── */}
-      <style>{`
+        {/* ── Styles ── */}
+        <style>{`
         .btn-primary {
           background: #E8604A;
           color: white;
@@ -227,377 +239,484 @@ export default function Page() {
           .hero-visual { display: none !important; }
           .features-grid { grid-template-columns: 1fr 1fr !important; }
           .plans-grid { grid-template-columns: 1fr !important; }
+          .grammar-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section style={{
-        padding: '72px max(24px, calc(50vw - 640px)) 80px',
-        position: 'relative',
-        overflow: 'hidden',
-        minHeight: 520,
-      }}>
-        {/* Декор: большой круг */}
-        <div style={{
-          position: 'absolute', right: -60, top: -80,
-          width: 600, height: 600,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(232,96,74,0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
+        {/* ── Hero ──────────────────────────────────────────────────────────── */}
+        <section style={{
+          padding: '72px max(24px, calc(50vw - 640px)) 80px',
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: 520,
+        }}>
+          {/* Декор: большой круг */}
+          <div style={{
+            position: 'absolute', right: -60, top: -80,
+            width: 600, height: 600,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(232,96,74,0.08) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }}/>
 
-        <div className="hero-grid" style={{ display: 'flex', alignItems: 'center', gap: 60 }}>
-          {/* Left */}
-          <div style={{ flex: '1 1 480px', maxWidth: 560 }}>
-            <div className="fade-up" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(232,96,74,0.1)', borderRadius: 50,
-              padding: '6px 14px', marginBottom: 24,
-              fontSize: 13, fontWeight: 500, color: '#E8604A',
-            }}>
-              <span>🌸</span> Учись на том, что тебе интересно
+          <div className="hero-grid" style={{display: 'flex', alignItems: 'center', gap: 60}}>
+            {/* Left */}
+            <div style={{flex: '1 1 480px', maxWidth: 560}}>
+              <div className="fade-up" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(232,96,74,0.1)', borderRadius: 50,
+                padding: '6px 14px', marginBottom: 24,
+                fontSize: 13, fontWeight: 500, color: '#E8604A',
+              }}>
+                <span>🌸</span> {t.landing.heroBadge}
+              </div>
+
+              <h1 className="fade-up-2" style={{
+                fontFamily: "'Noto Serif JP', serif",
+                fontSize: 'clamp(36px, 5vw, 58px)',
+                fontWeight: 700,
+                lineHeight: 1.15,
+                letterSpacing: '-0.02em',
+                marginBottom: 20,
+                color: '#1A1A1A',
+              }}>
+                {t.landing.heroTitle1}<br/>
+                <span style={{color: '#E8604A'}}>{t.landing.heroTitle2}</span>
+              </h1>
+
+              <p className="fade-up-3" style={{
+                fontSize: 17, lineHeight: 1.7, color: '#6B6355',
+                marginBottom: 36, maxWidth: 440,
+              }}>
+                {t.landing.heroSub1}<br/>
+                {t.landing.heroSub2}<br/>
+                {t.landing.heroSub3}
+              </p>
+
+              <div style={{display: 'flex', gap: 14, flexWrap: 'wrap'}}>
+                <Link href="/texts" className="btn-primary">
+                  <span>📄</span> {t.landing.uploadText}
+                </Link>
+                <a href="#how" className="btn-outline">
+                  <span>▶</span> {t.landing.howWorksBtn}
+                </a>
+              </div>
             </div>
 
-            <h1 className="fade-up-2" style={{
-              fontFamily: "'Noto Serif JP', serif",
-              fontSize: 'clamp(36px, 5vw, 58px)',
-              fontWeight: 700,
-              lineHeight: 1.15,
-              letterSpacing: '-0.02em',
-              marginBottom: 20,
-              color: '#1A1A1A',
+            {/* Right — иллюстрация */}
+            <div className="hero-visual float" style={{
+              flex: '0 0 420px',
+              position: 'relative',
+              height: 380,
             }}>
-              Изучай японский<br />
-              <span style={{ color: '#E8604A' }}>с удовольствием</span>
-            </h1>
+              {/* Большой круг-фон */}
+              <div style={{
+                position: 'absolute', right: 0, top: '50%',
+                transform: 'translateY(-50%)',
+                width: 360, height: 360,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #FCDDD8 0%, #F9C5BB 50%, #F5A898 100%)',
+                opacity: 0.6,
+              }}/>
 
-            <p className="fade-up-3" style={{
-              fontSize: 17, lineHeight: 1.7, color: '#6B6355',
-              marginBottom: 36, maxWidth: 440,
-            }}>
-              Загружай любые тексты, смотри переводы,<br />
-              разбирай грамматику и пополняй словарь.<br />
-              Учись на том, что тебе интересно.
-            </p>
+              {/* Японский текст */}
+              <div style={{
+                position: 'absolute', right: 24, top: 20,
+                fontFamily: "'Noto Serif JP'",
+                fontSize: 22, fontWeight: 700,
+                writingMode: 'vertical-rl',
+                color: 'rgba(139,115,85,0.4)',
+                letterSpacing: '0.1em',
+                lineHeight: 1.8,
+              }}>
+                継続は力なり
+              </div>
 
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-              <Link href="/texts" className="btn-primary">
-                <span>📄</span> Загрузить текст
-              </Link>
-              <a href="#how" className="btn-outline">
-                <span>▶</span> Как это работает?
-              </a>
+              {/* Сакура emoji крупно */}
+              <div style={{
+                position: 'absolute', left: '50%', top: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: 120,
+                filter: 'drop-shadow(0 8px 32px rgba(232,96,74,0.2))',
+              }}>
+                🏯
+              </div>
+
+              {/* Мелкие декоративные элементы */}
+              <div className="sakura" style={{left: 20, top: 60, animationDelay: '1s'}}>🌸</div>
+              <div className="sakura" style={{right: 30, bottom: 80, animationDelay: '3s'}}>🌸</div>
+              <div className="sakura" style={{left: 60, bottom: 40, animationDelay: '2s', fontSize: 16}}>🌸</div>
+
+              {/* Плашка "JLPT N5" */}
+              <div style={{
+                position: 'absolute', left: 0, bottom: 60,
+                background: 'white',
+                borderRadius: 14, padding: '10px 16px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                fontSize: 13, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{color: '#E8604A'}}>📚</span>
+                <div>
+                  <div style={{color: '#1A1A1A'}}>食べる · たべる</div>
+                  <div style={{color: '#8B7355', fontWeight: 400, fontSize: 11}}>to eat · JLPT N5</div>
+                </div>
+              </div>
             </div>
           </div>
+        </section>
 
-          {/* Right — иллюстрация */}
-          <div className="hero-visual float" style={{
-            flex: '0 0 420px',
-            position: 'relative',
-            height: 380,
+        <section style={{padding: '72px max(24px, calc(50vw - 640px))'}}>
+          <div className="grammar-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 60,
+            alignItems: 'center',
           }}>
-            {/* Большой круг-фон */}
-            <div style={{
-              position: 'absolute', right: 0, top: '50%',
-              transform: 'translateY(-50%)',
-              width: 360, height: 360,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #FCDDD8 0%, #F9C5BB 50%, #F5A898 100%)',
-              opacity: 0.6,
-            }} />
-
-            {/* Японский текст */}
-            <div style={{
-              position: 'absolute', right: 24, top: 20,
-              fontFamily: "'Noto Serif JP'",
-              fontSize: 22, fontWeight: 700,
-              writingMode: 'vertical-rl',
-              color: 'rgba(139,115,85,0.4)',
-              letterSpacing: '0.1em',
-              lineHeight: 1.8,
-            }}>
-              継続は力なり
+            <div>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#E8604A',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                marginBottom: 10
+              }}>
+                {t.landing.grammarKicker}
+              </div>
+              <h2 style={{
+                fontFamily: "'Noto Serif JP'",
+                fontSize: 'clamp(24px, 3vw, 36px)',
+                fontWeight: 700,
+                color: '#1A1A1A',
+                lineHeight: 1.3,
+                marginBottom: 24
+              }}>
+                {t.landing.grammarInOneClick}
+              </h2>
+              <Link href="/grammar" className="btn-outline">{t.landing.grammarCta}</Link>
             </div>
-
-            {/* Сакура emoji крупно */}
             <div style={{
-              position: 'absolute', left: '50%', top: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: 120,
-              filter: 'drop-shadow(0 8px 32px rgba(232,96,74,0.2))',
-            }}>
-              🏯
-            </div>
-
-            {/* Мелкие декоративные элементы */}
-            <div className="sakura" style={{ left: 20, top: 60, animationDelay: '1s' }}>🌸</div>
-            <div className="sakura" style={{ right: 30, bottom: 80, animationDelay: '3s' }}>🌸</div>
-            <div className="sakura" style={{ left: 60, bottom: 40, animationDelay: '2s', fontSize: 16 }}>🌸</div>
-
-            {/* Плашка "JLPT N5" */}
-            <div style={{
-              position: 'absolute', left: 0, bottom: 60,
               background: 'white',
-              borderRadius: 14, padding: '10px 16px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              fontSize: 13, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <span style={{ color: '#E8604A' }}>📚</span>
-              <div>
-                <div style={{ color: '#1A1A1A' }}>食べる · たべる</div>
-                <div style={{ color: '#8B7355', fontWeight: 400, fontSize: 11 }}>to eat · JLPT N5</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ──────────────────────────────────────────────────────── */}
-      <section style={{ padding: '72px max(24px, calc(50vw - 640px))' }}>
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#E8604A', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Что изучаем
-          </div>
-          <h2 style={{ fontFamily: "'Noto Serif JP'", fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 700, color: '#1A1A1A' }}>
-            Что хотите изучить сегодня?
-          </h2>
-        </div>
-
-        <div className="features-grid" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 16,
-        }}>
-          {[
-            { icon: '📄', title: 'Тексты', desc: 'Загружайте любые тексты на японском языке и получайте перевод, грамматический разбор и список слов.', href: '/texts', color: '#E8604A' },
-            { icon: '📖', title: 'Грамматика', desc: 'Изучайте грамматические конструкции с примерами на реальных текстах и тренируйте их в упражнениях.', href: '/grammar', color: '#2D5A3D' },
-            { icon: '🔍', title: 'Словарь', desc: 'Сохраняйте новые слова, повторяйте их с помощью карточек и отслеживайте свой прогресс.', href: '/vocabulary', color: '#8B7355' },
-            { icon: '▶', title: 'Аудио/Видео', desc: 'Смотрите видео и слушайте аудио с субтитрами, сохраняйте слова и выражения.', href: '/video', color: '#6B7FCC' },
-          ].map(f => (
-            <a key={f.title} href={f.href} className="feature-card" style={{ textDecoration: 'none' }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: 12,
-                background: f.color + '15',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, marginBottom: 16,
-              }}>
-                {f.icon}
-              </div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', marginBottom: 10 }}>{f.title}</h3>
-              <p style={{ fontSize: 13, color: '#6B6355', lineHeight: 1.65, marginBottom: 20 }}>{f.desc}</p>
-              <div style={{ color: f.color, fontSize: 18, fontWeight: 700 }}>→</div>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* ── How it works ─────────────────────────────────────────────────── */}
-      <section id="how" style={{
-        padding: '72px max(24px, calc(50vw - 640px))',
-        background: '#1A1A1A',
-        color: 'white',
-      }}>
-        <div style={{ marginBottom: 48, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#E8604A', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
-              Как это работает
-            </div>
-            <h2 style={{ fontFamily: "'Noto Serif JP'", fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 700 }}>
-              Три шага до понимания
-            </h2>
-          </div>
-          <Link href="/texts" className="btn-primary" style={{ flexShrink: 0 }}>Попробовать →</Link>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
-          {[
-            { n: '01', title: 'Загрузи текст', desc: 'Вставь любой японский текст — новость, рецепт, манга, субтитры. Без ограничений по теме.' },
-            { n: '02', title: 'Анализируй', desc: 'Кликай на слова — получай перевод и грамматику. Переключайся между режимами перевода и анализа.' },
-            { n: '03', title: 'Запоминай', desc: 'Добавляй незнакомые слова в словарь. Повторяй с карточками. Экспортируй в Anki.' },
-          ].map(s => (
-            <div key={s.n} style={{
-              padding: '28px 24px',
+              border: '1px solid #EDE8E1',
               borderRadius: 20,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.04)',
+              padding: '32px 28px',
+              fontSize: 15,
+              color: '#6B6355',
+              lineHeight: 1.8,
+              whiteSpace: 'pre-line',
+            }}>
+              {t.landing.grammarClickAway}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Features ──────────────────────────────────────────────────────── */}
+        <section style={{padding: '72px max(24px, calc(50vw - 640px))'}}>
+        <div style={{marginBottom: 40}}>
+            <div style={{
+              fontSize: 12,
+                fontWeight: 600,
+                color: '#E8604A',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                marginBottom: 10
+              }}>
+                {t.landing.whatWeTeach}
+              </div>
+              <h2 style={{
+                fontFamily: "'Noto Serif JP'",
+                fontSize: 'clamp(24px, 3vw, 36px)',
+                fontWeight: 700,
+                color: '#1A1A1A'
+              }}>
+                {t.landing.whatStudyToday}
+              </h2>
+            </div>
+
+            <div className="features-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 16,
+            }}>
+              {[
+                {icon: '📄', title: t.landing.fTextsTitle, desc: t.landing.fTextsDesc, href: '/texts', color: '#E8604A'},
+                {
+                  icon: '📖',
+                  title: t.landing.fGrammarTitle,
+                  desc: t.landing.fGrammarDesc,
+                  href: '/grammar',
+                  color: '#2D5A3D'
+                },
+                {
+                  icon: '🔍',
+                  title: t.landing.fVocabTitle,
+                  desc: t.landing.fVocabDesc,
+                  href: '/vocabulary',
+                  color: '#8B7355'
+                },
+                {icon: '▶', title: t.landing.fAvTitle, desc: t.landing.fAvDesc, href: '/video', color: '#6B7FCC'},
+              ].map(f => (
+                  <a key={f.title} href={f.href} className="feature-card" style={{textDecoration: 'none'}}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12,
+                      background: f.color + '15',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 20, marginBottom: 16,
+                    }}>
+                      {f.icon}
+                    </div>
+                    <h3 style={{fontSize: 16, fontWeight: 700, color: '#1A1A1A', marginBottom: 10}}>{f.title}</h3>
+                    <p style={{fontSize: 13, color: '#6B6355', lineHeight: 1.65, marginBottom: 20}}>{f.desc}</p>
+                    <div style={{color: f.color, fontSize: 18, fontWeight: 700}}>→</div>
+                  </a>
+              ))}
+            </div>
+          </section>
+
+          {/* ── How it works ─────────────────────────────────────────────────── */}
+          <section id="how" style={{
+            padding: '72px max(24px, calc(50vw - 640px))',
+            background: '#1A1A1A',
+            color: 'white',
+          }}>
+            <div style={{
+              marginBottom: 48,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 16
+            }}>
+              <div>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#E8604A',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  marginBottom: 10
+                }}>
+                  {t.landing.howTitle}
+                </div>
+                <h2 style={{fontFamily: "'Noto Serif JP'", fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 700}}>
+                  {t.landing.threeSteps}
+                </h2>
+              </div>
+              <Link href="/texts" className="btn-primary" style={{flexShrink: 0}}>{t.landing.tryIt}</Link>
+            </div>
+
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24}}>
+              {[
+                {n: '01', title: t.landing.s1Title, desc: t.landing.s1Desc},
+                {n: '02', title: t.landing.s2Title, desc: t.landing.s2Desc},
+                {n: '03', title: t.landing.s3Title, desc: t.landing.s3Desc},
+              ].map(s => (
+                  <div key={s.n} style={{
+                    padding: '28px 24px',
+                    borderRadius: 20,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.04)',
+                  }}>
+                    <div style={{
+                      fontFamily: "'Noto Serif JP'", fontSize: 48, fontWeight: 700,
+                      color: 'rgba(232,96,74,0.3)', marginBottom: 16, lineHeight: 1,
+                    }}>
+                      {s.n}
+                    </div>
+                    <h3 style={{fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 10}}>{s.title}</h3>
+                    <p style={{fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7}}>{s.desc}</p>
+                  </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Pricing ───────────────────────────────────────────────────────── */}
+          <section id="pricing" style={{padding: '80px max(24px, calc(50vw - 640px)) 96px'}}>
+            <div style={{marginBottom: 32, textAlign: 'center'}}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: '#E8604A',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                marginBottom: 10
+              }}>
+                {t.landing.pricingTitle}
+              </div>
+              <h2 style={{
+                fontFamily: "'Noto Serif JP'",
+                fontSize: 'clamp(24px, 3vw, 36px)',
+                fontWeight: 700,
+                color: '#1A1A1A'
+              }}>
+                {t.landing.choosePlanTitle}
+              </h2>
+            </div>
+
+            {/* Период оплаты */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 32,
             }}>
               <div style={{
-                fontFamily: "'Noto Serif JP'", fontSize: 48, fontWeight: 700,
-                color: 'rgba(232,96,74,0.3)', marginBottom: 16, lineHeight: 1,
+                display: 'inline-flex',
+                background: 'white',
+                border: '1px solid #EDE8E1',
+                borderRadius: 50,
+                padding: 4,
+                gap: 2,
+                flexWrap: 'wrap',
+                justifyContent: 'center',
               }}>
-                {s.n}
+                {PERIODS.map(p => (
+                    <button
+                        key={p.id}
+                        onClick={() => setPeriodId(p.id)}
+                        style={{
+                          padding: '9px 18px',
+                          borderRadius: 50,
+                          border: 'none',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          background: periodId === p.id ? '#E8604A' : 'transparent',
+                          color: periodId === p.id ? 'white' : '#8B7355',
+                        }}
+                        onMouseEnter={e => {
+                          if (periodId !== p.id) {
+                            e.currentTarget.style.background = 'rgba(232,96,74,0.08)';
+                            e.currentTarget.style.color = '#E8604A';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (periodId !== p.id) {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = '#8B7355';
+                          }
+                        }}
+                    >
+                      {periodLabel[p.id]}
+                      {p.discount > 0 && (
+                          <span style={{opacity: 0.85}}>{` −${Math.round(p.discount * 100)}%`}</span>
+                      )}
+                    </button>
+                ))}
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 10 }}>{s.title}</h3>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7 }}>{s.desc}</p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* ── Pricing ───────────────────────────────────────────────────────── */}
-      <section id="pricing" style={{ padding: '80px max(24px, calc(50vw - 640px)) 96px' }}>
-        <div style={{ marginBottom: 32, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#E8604A', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Тарифы
-          </div>
-          <h2 style={{ fontFamily: "'Noto Serif JP'", fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 700, color: '#1A1A1A' }}>
-            Выберите тарифный план
-          </h2>
-        </div>
-
-        {/* Период оплаты */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: 32,
-        }}>
-          <div style={{
-            display: 'inline-flex',
-            background: 'white',
-            border: '1px solid #EDE8E1',
-            borderRadius: 50,
-            padding: 4,
-            gap: 2,
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-          }}>
-            {PERIODS.map(p => (
-              <button
-                key={p.id}
-                onClick={() => setPeriodId(p.id)}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: 50,
-                  border: 'none',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  background: periodId === p.id ? '#E8604A' : 'transparent',
-                  color: periodId === p.id ? 'white' : '#8B7355',
-                }}
-                onMouseEnter={e => {
-                  if (periodId !== p.id) {
-                    e.currentTarget.style.background = 'rgba(232,96,74,0.08)';
-                    e.currentTarget.style.color = '#E8604A';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (periodId !== p.id) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#8B7355';
-                  }
-                }}
-              >
-                {p.label}
-                {p.discount > 0 && (
-                  <span style={{ opacity: 0.85 }}>{` −${Math.round(p.discount * 100)}%`}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {plansError && (
-          <div style={{
-            maxWidth: 520,
-            margin: '0 auto 24px',
-            textAlign: 'center',
-            padding: '12px 16px',
-            borderRadius: 12,
-            background: 'rgba(232,96,74,0.08)',
-            color: '#D14A35',
-            fontSize: 14,
-          }}>
-            {plansError}
-          </div>
-        )}
-
-        <div className="plans-grid" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 20,
-          maxWidth: 900,
-          margin: '0 auto',
-        }}>
-          {plans.map(plan => {
-            const color = PLAN_COLORS[plan.id] || '#8B7355';
-            const selected = selectedPlan === plan.id;
-            const isCurrentPlan = currentPlanId === plan.id;
-            const price = priceFor(plan.price);
-            const perMonth = Math.round(plan.price * (1 - period.discount));
-
-            return (
-              <div
-                key={plan.id}
-                className={`plan-card${selected ? ' selected' : ''}`}
-                onClick={() => setSelectedPlan(plan.id)}
-                style={{ cursor: 'pointer' }}
-              >
-                {plan.id === 'premium' && (
-                  <div style={{
-                    position: 'absolute', top: -12, right: 20,
-                    background: '#E8604A', color: 'white',
-                    borderRadius: 50, width: 36, height: 36,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16,
-                  }}>⭐</div>
-                )}
-                <div style={{ marginBottom: 4, fontSize: 13, fontWeight: 600, color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                  {plan.name}
+            {plansError && (
+                <div style={{
+                  maxWidth: 520,
+                  margin: '0 auto 24px',
+                  textAlign: 'center',
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(232,96,74,0.08)',
+                  color: '#D14A35',
+                  fontSize: 14,
+                }}>
+                  {plansError}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-                  <span style={{ fontSize: 36, fontWeight: 700, color: '#1A1A1A' }}>
-                    {formatPrice(price)}
+            )}
+
+            <div className="plans-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 20,
+              maxWidth: 900,
+              margin: '0 auto',
+            }}>
+              {plans.map(plan => {
+                const color = PLAN_COLORS[plan.id] || '#8B7355';
+                const selected = selectedPlan === plan.id;
+                const isCurrentPlan = currentPlanId === plan.id;
+                const price = priceFor(plan.price);
+                const perMonth = Math.round(plan.price * (1 - period.discount));
+
+                return (
+                    <div
+                        key={plan.id}
+                        className={`plan-card${selected ? ' selected' : ''}`}
+                        onClick={() => setSelectedPlan(plan.id)}
+                        style={{cursor: 'pointer'}}
+                    >
+                      {plan.id === 'premium' && (
+                          <div style={{
+                            position: 'absolute', top: -12, right: 20,
+                            background: '#E8604A', color: 'white',
+                            borderRadius: 50, width: 36, height: 36,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 16,
+                          }}>⭐</div>
+                      )}
+                      <div style={{
+                        marginBottom: 4,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em'
+                      }}>
+                        {plan.name}
+                      </div>
+                      <div style={{display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6}}>
+                  <span style={{fontSize: 36, fontWeight: 700, color: '#1A1A1A'}}>
+                    {formatPrice(price, plan.currency)}
                   </span>
-                </div>
-                <div style={{ fontSize: 13, color: '#8B7355', marginBottom: 28 }}>
-                  {period.months > 1
-                    ? `за ${period.months} ${period.months === 3 ? 'месяца' : period.months === 12 ? 'месяцев' : 'месяцев'} · ≈ ${formatPrice(perMonth)}/мес`
-                    : '/ месяц'}
-                </div>
-                <div style={{ borderTop: '1px solid #EDE8E1', paddingTop: 24, marginBottom: 28 }}>
-                  {plan.features.map(f => (
-                    <div key={f} className="check-item"><span className="check-icon">✓</span>{f}</div>
-                  ))}
-                </div>
+                      </div>
+                      <div style={{fontSize: 13, color: '#8B7355', marginBottom: 28}}>
+                        {period.months > 1
+                            ? tf(t.landing.forMonths, {
+                              months: period.months,
+                              word: period.months === 3 ? t.landing.monthWord3 : t.landing.monthWordOther,
+                              price: formatPrice(perMonth, plan.currency),
+                            })
+                            : t.landing.perMonth}
+                      </div>
+                      <div style={{borderTop: '1px solid #EDE8E1', paddingTop: 24, marginBottom: 28}}>
+                        {plan.features.map(f => (
+                            <div key={f} className="check-item"><span className="check-icon">✓</span>{f}</div>
+                        ))}
+                      </div>
 
-                {isCurrentPlan ? (
-                  <button style={{
-                    width: '100%', padding: '13px', borderRadius: 50,
-                    border: '1.5px solid #EDE8E1', background: 'transparent',
-                    fontSize: 14, fontWeight: 600,
-                    color: plan.id === 'free' ? '#8B7355' : '#2D5A3D',
-                    cursor: 'default',
-                  }}>
-                    {plan.id === 'free' ? 'Текущий план' : '✓ Ваш план'}
-                  </button>
-                ) : (
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      if (plan.id === 'free') {
-                        setSelectedPlan(plan.id);
-                        return;
-                      }
-                      startCheckout(plan.id);
-                    }}
-                    disabled={checkingOut !== null}
-                    style={{
-                      width: '100%', justifyContent: 'center',
-                      background: checkingOut === plan.id ? '#D4C5B0' : '#E8604A',
-                      cursor: checkingOut !== null ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {checkingOut === plan.id ? 'Переход к оплате…' : 'Выбрать план'}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    </div>
-  );
+                      {isCurrentPlan ? (
+                          <button style={{
+                            width: '100%', padding: '13px', borderRadius: 50,
+                            border: '1.5px solid #EDE8E1', background: 'transparent',
+                            fontSize: 14, fontWeight: 600,
+                            color: plan.id === 'free' ? '#8B7355' : '#2D5A3D',
+                            cursor: 'default',
+                          }}>
+                            {plan.id === 'free' ? t.plans.current : t.landing.yourPlan}
+                          </button>
+                      ) : (
+                          <button
+                              className="btn-primary"
+                              onClick={() => {
+                                if (plan.id === 'free') {
+                                  setSelectedPlan(plan.id);
+                                  return;
+                                }
+                                startCheckout(plan.id);
+                              }}
+                              disabled={checkingOut !== null}
+                              style={{
+                                width: '100%', justifyContent: 'center',
+                                background: checkingOut === plan.id ? '#D4C5B0' : '#E8604A',
+                                cursor: checkingOut !== null ? 'not-allowed' : 'pointer',
+                              }}
+                          >
+                            {checkingOut === plan.id ? t.landing.goingToCheckout : t.plans.choose}
+                          </button>
+                      )}
+                    </div>
+                );
+              })}
+            </div>
+          </section>
+      </div>
+);
 }

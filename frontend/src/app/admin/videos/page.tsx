@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toApiUrl } from '@/lib/media-url';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -32,6 +33,7 @@ type UploadState = 'idle' | 'uploading' | 'done' | 'error';
 
 export default function AdminVideosPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const fileRef      = useRef<HTMLInputElement>(null);
   const thumbRef     = useRef<HTMLInputElement>(null);
   const subtitleRef  = useRef<HTMLInputElement>(null);
@@ -128,7 +130,7 @@ export default function AdminVideosPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить видео?')) return;
+    if (!confirm(t.admin.videos.deleteConfirm)) return;
     await apiFetch(`/api/admin/videos/${id}`, { method: 'DELETE' });
     setVideos(prev => prev.filter(v => v.id !== id));
   };
@@ -189,7 +191,7 @@ export default function AdminVideosPage() {
             fontWeight: 500,
             color: BLUE,
           }}>
-            <span>⚙️</span> Админ-панель
+            <span>⚙️</span> {t.nav.adminPanel}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -197,7 +199,7 @@ export default function AdminVideosPage() {
             fontWeight: 700,
             color: '#1A1A1A',
           }}>
-            Видео
+            {t.admin.videos.title}
           </h1>
         </div>
         <button
@@ -209,32 +211,32 @@ export default function AdminVideosPage() {
           onMouseEnter={e => { if (!showForm) e.currentTarget.style.background = '#1D4ED8'; }}
           onMouseLeave={e => { e.currentTarget.style.background = showForm ? '#8B7355' : BLUE; }}
         >
-          <span>{showForm ? '−' : '+'}</span> Загрузить видео
+          <span>{showForm ? '−' : '+'}</span> {t.admin.videos.uploadVideo}
         </button>
       </div>
 
       {/* Форма загрузки видео */}
       {showForm && (
         <div style={{ background: 'white', border: '1px solid #EDE8E1', borderRadius: 20, padding: 24, marginBottom: 24 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 16 }}>Новое видео</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 16 }}>{t.admin.videos.newVideo}</h2>
           <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <input
-              type="text" placeholder="Название" required
+              type="text" placeholder={t.admin.videos.titlePlaceholder} required
               value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
               style={inputStyle} onFocus={inputFocus} onBlur={inputBlur}
             />
             <textarea
-              placeholder="Описание (необязательно)" rows={2}
+              placeholder={t.admin.videos.descPlaceholder} rows={2}
               value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
               style={{ ...inputStyle, resize: 'vertical' }} onFocus={inputFocus} onBlur={inputBlur}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: '#8B7355', marginBottom: 6 }}>Видео файл (MP4/WebM)</label>
+                <label style={{ display: 'block', fontSize: 13, color: '#8B7355', marginBottom: 6 }}>{t.admin.videos.videoFileLabel}</label>
                 <FileField inputRef={fileRef} accept="video/mp4,video/webm,video/ogg" required />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, color: '#8B7355', marginBottom: 6 }}>Превью (необязательно)</label>
+                <label style={{ display: 'block', fontSize: 13, color: '#8B7355', marginBottom: 6 }}>{t.admin.videos.previewLabel}</label>
                 <FileField inputRef={thumbRef} accept="image/*" />
               </div>
             </div>
@@ -244,7 +246,7 @@ export default function AdminVideosPage() {
                 onChange={e => setForm(p => ({ ...p, is_published: e.target.checked }))}
                 style={{ borderRadius: 4 }}
               />
-              Опубликовать сразу
+              {t.admin.videos.publishNow}
             </label>
 
             {uploadState === 'uploading' && (
@@ -264,7 +266,7 @@ export default function AdminVideosPage() {
                 color: '#D14A35',
                 fontSize: 14,
               }}>
-                Ошибка загрузки. Попробуйте ещё раз.
+                {tf(t.admin.videos.uploadError)}
               </div>
             )}
 
@@ -276,7 +278,7 @@ export default function AdminVideosPage() {
                   opacity: uploadState === 'uploading' ? 0.5 : 1,
                   cursor: uploadState === 'uploading' ? 'not-allowed' : 'pointer',
                 }}>
-                {uploadState === 'uploading' ? `Загружаем… ${progress}%` : 'Загрузить'}
+                {uploadState === 'uploading' ? tf(t.admin.videos.uploading, { progress }) : t.admin.videos.upload}
               </button>
               <button type="button" onClick={() => setShowForm(false)}
                 style={{
@@ -287,7 +289,7 @@ export default function AdminVideosPage() {
                 onMouseEnter={e => e.currentTarget.style.color = '#1A1A1A'}
                 onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
               >
-                Отмена
+                {t.admin.videos.cancel}
               </button>
             </div>
           </form>
@@ -298,12 +300,12 @@ export default function AdminVideosPage() {
       {subtitleVideoId && (
         <div style={{ background: 'white', border: '1px solid #EDE8E1', borderRadius: 20, padding: 20, marginBottom: 24 }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 12 }}>
-            Добавить субтитры к видео #{subtitleVideoId}
+            {tf(t.admin.videos.addSubtitlesTo, { id: subtitleVideoId })}
           </h2>
           <form onSubmit={handleSubtitleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <input
-                type="text" placeholder="Название (日本語)" required
+                type="text" placeholder={t.admin.videos.labelPlaceholder} required
                 value={subtitleForm.label}
                 onChange={e => setSubtitleForm(p => ({ ...p, label: e.target.value }))}
                 style={inputStyle} onFocus={inputFocus} onBlur={inputBlur}
@@ -313,9 +315,9 @@ export default function AdminVideosPage() {
                 onChange={e => setSubtitleForm(p => ({ ...p, language: e.target.value }))}
                 style={{ ...inputStyle, cursor: 'pointer' }}
               >
-                <option value="jp">日本語 (jp)</option>
-                <option value="ru">Русский (ru)</option>
-                <option value="en">English (en)</option>
+                <option value="jp">{t.admin.videos.jp}</option>
+                <option value="ru">{t.admin.videos.ru}</option>
+                <option value="en">{t.admin.videos.en}</option>
               </select>
               <FileField inputRef={subtitleRef} accept=".vtt,.srt,text/vtt,text/plain" required />
             </div>
@@ -323,11 +325,11 @@ export default function AdminVideosPage() {
               <input type="checkbox" checked={subtitleForm.is_default}
                 onChange={e => setSubtitleForm(p => ({ ...p, is_default: e.target.checked }))}
                 style={{ borderRadius: 4 }} />
-              По умолчанию
+              {t.admin.videos.byDefault}
             </label>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <button type="submit" style={{ ...blueButtonStyle, padding: '10px 22px' }}>
-                Загрузить субтитры
+                {t.admin.videos.uploadSubtitles}
               </button>
               <button type="button" onClick={() => setSubtitleVideoId(null)}
                 style={{
@@ -338,7 +340,7 @@ export default function AdminVideosPage() {
                 onMouseEnter={e => e.currentTarget.style.color = '#1A1A1A'}
                 onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
               >
-                Отмена
+                {t.admin.videos.cancel}
               </button>
             </div>
           </form>
@@ -356,7 +358,7 @@ export default function AdminVideosPage() {
         }}>
           <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>▶</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-            Видео нет.
+            {t.admin.videos.noVideos}
           </div>
         </div>
       ) : (
@@ -389,7 +391,7 @@ export default function AdminVideosPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#8B7355' }}>{v.duration_formatted}</span>
-                  <span style={{ fontSize: 12, color: '#8B7355' }}>{v.subtitles_count} субт.</span>
+                  <span style={{ fontSize: 12, color: '#8B7355' }}>{tf(t.admin.videos.subtitlesCount, { count: v.subtitles_count })}</span>
                   <span style={{
                     fontSize: 12,
                     padding: '2px 10px',
@@ -397,7 +399,7 @@ export default function AdminVideosPage() {
                     background: v.is_published ? 'rgba(45,90,61,0.1)' : '#F3EFE9',
                     color: v.is_published ? '#2D5A3D' : '#8B7355',
                   }}>
-                    {v.is_published ? 'Опубликовано' : 'Черновик'}
+                    {v.is_published ? t.admin.videos.published : t.admin.videos.draft}
                   </span>
                 </div>
               </div>
@@ -405,13 +407,13 @@ export default function AdminVideosPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 <button onClick={() => setSubtitleVideoId(v.id)}
                   style={actionLinkStyle(BLUE)}>
-                  + субтитры
+                  {t.admin.videos.addSubs}
                 </button>
                 <button onClick={() => togglePublished(v)} style={actionLinkStyle('#8B7355')}>
-                  {v.is_published ? 'Скрыть' : 'Опубликовать'}
+                  {v.is_published ? t.admin.videos.hide : t.admin.videos.publish}
                 </button>
                 <button onClick={() => router.push(`/video/${v.id}`)} style={actionLinkStyle(BLUE)}>
-                  Открыть
+                  {t.admin.videos.open}
                 </button>
                 <button
                   onClick={() => handleDelete(v.id)}
@@ -435,7 +437,7 @@ export default function AdminVideosPage() {
                     e.currentTarget.style.background = 'transparent';
                   }}
                 >
-                  Удалить
+                  {t.admin.videos.delete}
                 </button>
               </div>
             </div>
@@ -452,6 +454,7 @@ function FileField({ inputRef, accept, required }: {
   required?: boolean;
 }) {
   const [fileName, setFileName] = useState('');
+  const { t } = useI18n();
 
   return (
     <div>
@@ -492,7 +495,7 @@ function FileField({ inputRef, accept, required }: {
               flexShrink: 0,
             }}
           >
-            ✕ Очистить
+            {t.admin.videos.clear}
           </button>
         </div>
       )}

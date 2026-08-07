@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -65,9 +66,9 @@ function initials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
 }
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string | null | undefined, locale: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function fieldStyle(): React.CSSProperties {
@@ -101,6 +102,8 @@ type EditState = {
 
 export default function Page() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
   const [users, setUsers] = useState<User[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [page, setPage] = useState(1);
@@ -187,21 +190,21 @@ export default function Page() {
     } catch (e: unknown) {
       const err = e as { message?: string; errors?: Record<string, string[]> };
       const msg = err?.message || (err?.errors ? Object.values(err.errors).flat()[0] : undefined);
-      setNotice(msg ?? 'Не удалось сохранить изменения.');
+      setNotice(msg ?? t.admin.users.saveError);
     } finally {
       setSavingEdit(false);
     }
   };
 
   const handleDelete = async (user: User) => {
-    if (!confirm(`Удалить пользователя «${user.name}»?`)) return;
+    if (!confirm(tf(t.admin.users.deleteConfirm, { name: user.name }))) return;
     try {
       await apiFetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
       setUsers(prev => prev.filter(u => u.id !== user.id));
       if (users.length === 1 && page > 1) setPage(p => p - 1);
     } catch (e: unknown) {
       const err = e as { message?: string };
-      setNotice(err?.message ?? 'Не удалось удалить пользователя.');
+      setNotice(err?.message ?? t.admin.users.deleteError);
     }
   };
 
@@ -221,7 +224,7 @@ export default function Page() {
           fontWeight: 500,
           color: BLUE,
         }}>
-          <span>⚙️</span> Админ-панель
+          <span>⚙️</span> {t.nav.adminPanel}
         </div>
         <h1 style={{
           fontFamily: "'Noto Serif JP'",
@@ -229,10 +232,10 @@ export default function Page() {
           fontWeight: 700,
           color: '#1A1A1A',
         }}>
-          Пользователи
+          {t.admin.users.title}
         </h1>
         <div style={{ fontSize: 14, color: '#8B7355', marginTop: 4 }}>
-          Управление аккаунтами, ролями и подписками
+          {t.admin.users.desc}
         </div>
       </div>
 
@@ -257,7 +260,7 @@ export default function Page() {
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') runSearch(); }}
-          placeholder="Поиск по имени или email…"
+          placeholder={t.admin.users.searchPlaceholder}
           style={{ ...fieldStyle(), maxWidth: 360 }}
           onFocus={e => inputFocus(e, true)}
           onBlur={e => inputFocus(e, false)}
@@ -272,7 +275,7 @@ export default function Page() {
           onMouseEnter={e => { e.currentTarget.style.background = BLUE_HOVER; }}
           onMouseLeave={e => { e.currentTarget.style.background = BLUE; }}
         >
-          Найти
+          {t.admin.users.find}
         </button>
         {search && (
           <button
@@ -282,7 +285,7 @@ export default function Page() {
               padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
             }}
           >
-            Сбросить
+            {t.admin.users.reset}
           </button>
         )}
       </div>
@@ -298,10 +301,10 @@ export default function Page() {
         }}>
           <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>👥</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-            {search ? 'Ничего не найдено' : 'Нет пользователей'}
+            {search ? t.admin.users.noResults : t.admin.users.noUsers}
           </div>
           <div style={{ fontSize: 14, color: '#8B7355' }}>
-            {search ? 'Попробуйте изменить поисковый запрос' : 'Пользователи появятся после регистрации'}
+            {search ? t.admin.users.noResultsHint : t.admin.users.noUsersHint}
           </div>
         </div>
       ) : (
@@ -338,7 +341,7 @@ export default function Page() {
                         fontSize: 11, fontWeight: 600, color: BLUE,
                         background: 'rgba(59,130,246,0.08)', padding: '2px 8px', borderRadius: 20,
                       }}>
-                        это вы
+                        {t.admin.users.itIsYou}
                       </span>
                     )}
                     {user.roles.map(role => (
@@ -362,13 +365,13 @@ export default function Page() {
                     {user.email}
                     {user.country && ` · ${user.country}`}
                     {!user.email_verified_at && (
-                      <span style={{ color: '#B45309' }}> · email не подтверждён</span>
+                      <span style={{ color: '#B45309' }}> · {t.admin.users.emailNotVerified}</span>
                     )}
                   </div>
                   <div style={{ fontSize: 12, color: '#B9A88F', marginTop: 4 }}>
-                    Регистрация: {formatDate(user.created_at)}
+                    {tf(t.admin.users.registered, { date: formatDate(user.created_at, locale) })}
                     {user.subscription_ends_at && (
-                      <> · Подписка до {formatDate(user.subscription_ends_at)}</>
+                      <> · {tf(t.admin.users.subUntil, { date: formatDate(user.subscription_ends_at, locale) })}</>
                     )}
                   </div>
                 </div>
@@ -383,7 +386,7 @@ export default function Page() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    {editingId === user.id ? 'Отмена' : 'Изменить'}
+                    {editingId === user.id ? t.admin.users.cancel : t.admin.users.edit}
                   </button>
                   {user.id !== currentUserId && (
                     <button
@@ -396,7 +399,7 @@ export default function Page() {
                       onMouseEnter={e => { e.currentTarget.style.color = CORAL_HOVER; e.currentTarget.style.background = 'rgba(232,96,74,0.08)'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = '#8B7355'; e.currentTarget.style.background = 'transparent'; }}
                     >
-                      Удалить
+                      {t.admin.users.delete}
                     </button>
                   )}
                 </div>
@@ -414,15 +417,15 @@ export default function Page() {
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>Имя</label>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>{t.admin.users.nameField}</label>
                       <input value={edit.name} onChange={e => setEdit(prev => prev ? { ...prev, name: e.target.value } : prev)} style={fieldStyle()} onFocus={e => inputFocus(e, true)} onBlur={e => inputFocus(e, false)} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>Email</label>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>{t.admin.users.emailField}</label>
                       <input value={edit.email} onChange={e => setEdit(prev => prev ? { ...prev, email: e.target.value } : prev)} style={fieldStyle()} onFocus={e => inputFocus(e, true)} onBlur={e => inputFocus(e, false)} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>Тариф</label>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>{t.admin.users.planField}</label>
                       <select value={edit.plan} onChange={e => setEdit(prev => prev ? { ...prev, plan: e.target.value } : prev)} style={fieldStyle()} onFocus={e => inputFocus(e, true)} onBlur={e => inputFocus(e, false)}>
                         <option value="free">Free</option>
                         <option value="standard">Standard</option>
@@ -432,24 +435,24 @@ export default function Page() {
                     {edit.plan !== 'free' && (
                       <>
                         <div>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>Период подписки</label>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>{t.admin.users.periodField}</label>
                           <select value={edit.period} onChange={e => setEdit(prev => prev ? { ...prev, period: e.target.value } : prev)} style={fieldStyle()} onFocus={e => inputFocus(e, true)} onBlur={e => inputFocus(e, false)}>
-                            <option value="">Без периода</option>
-                            <option value="1m">1 месяц</option>
-                            <option value="3m">3 месяца</option>
-                            <option value="6m">6 месяцев</option>
-                            <option value="12m">12 месяцев</option>
+                            <option value="">{t.admin.users.noPeriod}</option>
+                            <option value="1m">{t.admin.users.period1m}</option>
+                            <option value="3m">{t.admin.users.period3m}</option>
+                            <option value="6m">{t.admin.users.period6m}</option>
+                            <option value="12m">{t.admin.users.period12m}</option>
                           </select>
                         </div>
                         <div>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>Действует до</label>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6 }}>{t.admin.users.endsAt}</label>
                           <input type="date" value={edit.ends_at} onChange={e => setEdit(prev => prev ? { ...prev, ends_at: e.target.value } : prev)} style={fieldStyle()} onFocus={e => inputFocus(e, true)} onBlur={e => inputFocus(e, false)} />
                         </div>
                       </>
                     )}
                   </div>
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 8 }}>Роль</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 8 }}>{t.admin.users.roleField}</div>
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                       {(['user', 'manager', 'administrator'] as const).map(role => (
                         <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#1A1A1A', cursor: 'pointer' }}>
@@ -469,7 +472,7 @@ export default function Page() {
                         cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.5 : 1,
                       }}
                     >
-                      {savingEdit ? 'Сохраняем…' : 'Сохранить'}
+                      {savingEdit ? t.admin.users.saving : t.admin.users.save}
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
@@ -478,7 +481,7 @@ export default function Page() {
                         padding: '10px 20px', fontSize: 14, color: '#8B7355', cursor: 'pointer',
                       }}
                     >
-                      Отмена
+                      {t.admin.users.cancel}
                     </button>
                   </div>
                 </div>
@@ -505,7 +508,7 @@ export default function Page() {
               transition: 'all 0.2s',
             }}
           >
-            ← Назад
+            {t.admin.users.prev}
           </button>
           {Array.from({ length: meta.last_page }, (_, i) => i + 1).map(n => (
             <button
@@ -540,7 +543,7 @@ export default function Page() {
               transition: 'all 0.2s',
             }}
           >
-            Далее →
+            {t.admin.users.next}
           </button>
         </div>
       )}
@@ -552,7 +555,7 @@ export default function Page() {
             fontSize: 13, color: '#8B7355', background: 'rgba(59,130,246,0.06)',
             padding: '8px 16px', borderRadius: 20,
           }}>
-            Всего пользователей: {meta.total}
+            {tf(t.admin.users.total, { total: meta.total })}
           </div>
         </div>
       )}

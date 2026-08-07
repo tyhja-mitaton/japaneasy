@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -24,56 +25,58 @@ type Setting = { key: string; value: string; description: string; masked?: boole
 
 const BLUE = '#2563EB';
 
-// Группировка настроек для отображения
-const GROUPS = [
+// Группировка настроек для отображения (ключи секций i18n)
+type Group = { titleKey: string; keys: string[]; hintKey?: string };
+const GROUPS: Group[] = [
   {
-    title: 'Платёжная система',
+    titleKey: 'groupPayment',
     keys: ['payment_provider', 'payment_test_mode'],
   },
   {
-    title: 'Тарифы',
-    keys: ['plan_standard_price', 'plan_premium_price'],
+    titleKey: 'groupTariffs',
+    keys: ['plan_standard_price', 'plan_premium_price', 'usd_rate'],
   },
   {
-    title: 'Лимиты тарифов',
-    hint: '0 = безлимит. Тексты — в месяц; для платных тарифов отсчёт от даты подписки.',
+    titleKey: 'groupLimits',
+    hintKey: 'groupLimitsHint',
     keys: [
       'limit_texts_free', 'limit_texts_standard', 'limit_texts_premium',
       'limit_vocab_free', 'limit_vocab_standard', 'limit_vocab_premium',
     ],
   },
   {
-    title: 'Налоги',
+    titleKey: 'groupTaxes',
     keys: ['business_type', 'vat_enabled', 'vat_rate'],
   },
   {
-    title: 'Robokassa',
+    titleKey: 'groupRobokassa',
     keys: ['robokassa_login', 'robokassa_password1', 'robokassa_password2', 'robokassa_hash_algo'],
   },
   {
-    title: 'Prodamus',
+    titleKey: 'groupProdamus',
     keys: ['prodamus_shop_url', 'prodamus_api_key', 'prodamus_secret_key'],
   },
 ];
 
-// Поля с выбором из вариантов
-const SELECT_OPTIONS: Record<string, { label: string; value: string }[]> = {
+// Поля с выбором из вариантов (label = ключ i18n)
+type SelectOption = { labelKey?: string; label?: string; value: string };
+const SELECT_OPTIONS: Record<string, SelectOption[]> = {
   payment_provider: [
-    { label: 'Robokassa', value: 'robokassa' },
-    { label: 'Prodamus',  value: 'prodamus'  },
+    { labelKey: 'optRobokassa', value: 'robokassa' },
+    { labelKey: 'optProdamus',  value: 'prodamus'  },
   ],
   payment_test_mode: [
-    { label: 'Тестовый режим', value: '1' },
-    { label: 'Боевой режим',   value: '0' },
+    { labelKey: 'optTestMode', value: '1' },
+    { labelKey: 'optProdMode', value: '0' },
   ],
   business_type: [
-    { label: 'Самозанятый', value: 'self_employed' },
-    { label: 'ИП',          value: 'ip'            },
-    { label: 'ООО',         value: 'ooo'           },
+    { labelKey: 'optSelfEmployed', value: 'self_employed' },
+    { labelKey: 'optIp',          value: 'ip'            },
+    { labelKey: 'optOoo',         value: 'ooo'           },
   ],
   vat_enabled: [
-    { label: 'Без НДС (самозанятый)', value: '0' },
-    { label: 'НДС включён (ИП/ООО)', value: '1' },
+    { labelKey: 'optNoVat', value: '0' },
+    { labelKey: 'optVatIncluded', value: '1' },
   ],
   robokassa_hash_algo: [
     { label: 'MD5',    value: 'md5'    },
@@ -90,6 +93,8 @@ const PASSWORD_FIELDS = new Set([
 
 export default function AdminSettingsPage() {
   const router = useRouter();
+  const { t, lang } = useI18n();
+  const currency = lang === 'ru' ? '₽' : '$';
   const [settings, setSettings] = useState<Record<string, Setting>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -126,7 +131,7 @@ export default function AdminSettingsPage() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      setError(error.message || 'Ошибка сохранения');
+      setError(error.message || t.admin.settings.saveError);
     } finally {
       setSaving(false);
     }
@@ -166,7 +171,7 @@ export default function AdminSettingsPage() {
             fontWeight: 500,
             color: BLUE,
           }}>
-            <span>⚙️</span> Админ-панель
+            <span>⚙️</span> {t.nav.adminPanel}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -175,14 +180,14 @@ export default function AdminSettingsPage() {
             color: '#1A1A1A',
             marginBottom: 4,
           }}>
-            Настройки
+            {t.admin.settings.title}
           </h1>
           <div style={{ fontSize: 14, color: '#8B7355' }}>
-            Платёжные системы, тарифы, налоги
+            {t.admin.settings.desc}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {saved && <span style={{ color: '#2D5A3D', fontSize: 14 }}>✓ Сохранено</span>}
+          {saved && <span style={{ color: '#2D5A3D', fontSize: 14 }}>{t.admin.settings.saved}</span>}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -211,7 +216,7 @@ export default function AdminSettingsPage() {
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            {saving ? 'Сохраняем…' : 'Сохранить'}
+            {saving ? t.admin.settings.saving : t.admin.settings.save}
           </button>
         </div>
       </div>
@@ -247,7 +252,7 @@ export default function AdminSettingsPage() {
             borderRadius: '50%',
             background: testMode ? '#D97706' : '#2D5A3D',
           }} />
-          {testMode ? 'Тестовый режим' : 'Боевой режим'}
+          {testMode ? t.admin.settings.testMode : t.admin.settings.prodMode}
         </div>
         <div style={{
           display: 'inline-flex',
@@ -261,7 +266,7 @@ export default function AdminSettingsPage() {
           color: BLUE,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: BLUE }} />
-          {provider === 'robokassa' ? 'Robokassa' : 'Prodamus'}
+          {provider === 'robokassa' ? t.admin.settings.optRobokassa : t.admin.settings.optProdamus}
         </div>
         {!vatEnabled && (
           <div style={{
@@ -275,7 +280,7 @@ export default function AdminSettingsPage() {
             background: 'rgba(139,115,85,0.1)',
             color: '#8B7355',
           }}>
-            Самозанятый · Без НДС
+            {t.admin.settings.selfEmployed}
           </div>
         )}
       </div>
@@ -287,7 +292,7 @@ export default function AdminSettingsPage() {
           if (!groupSettings.length) return null;
 
           return (
-            <div key={group.title} style={{
+            <div key={group.titleKey} style={{
               background: 'white',
               borderRadius: 20,
               border: '1px solid #EDE8E1',
@@ -303,11 +308,11 @@ export default function AdminSettingsPage() {
                   fontWeight: 700,
                   color: '#1A1A1A',
                 }}>
-                  {group.title}
+                  {(t.admin.settings as unknown as Record<string, string>)[group.titleKey]}
                 </h2>
-                {group.hint && (
+                {group.hintKey && (
                   <div style={{ fontSize: 12, color: '#8B7355', marginTop: 4 }}>
-                    {group.hint}
+                    {(t.admin.settings as unknown as Record<string, string>)[group.hintKey]}
                   </div>
                 )}
               </div>
@@ -347,12 +352,14 @@ export default function AdminSettingsPage() {
                             style={fieldStyle}
                           >
                             {options.map(o => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
+                              <option key={o.value} value={o.value}>
+                                {o.labelKey ? (t.admin.settings as unknown as Record<string, string>)[o.labelKey] : o.label}
+                              </option>
                             ))}
                           </select>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {isPrice && <span style={{ color: '#8B7355', fontSize: 14 }}>₽</span>}
+                            {isPrice && <span style={{ color: '#8B7355', fontSize: 14 }}>{currency}</span>}
                             {isVatRate && <span style={{ color: '#8B7355', fontSize: 14 }}>%</span>}
                             <input
                               type={isPassword ? 'password' : isPrice || isVatRate || isLimit ? 'number' : 'text'}
@@ -374,7 +381,7 @@ export default function AdminSettingsPage() {
                                 color: '#8B7355', background: 'rgba(139,115,85,0.08)',
                                 padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap',
                               }}>
-                                {key.includes('texts') ? 'текстов' : 'слов'}
+                                {key.includes('texts') ? t.admin.settings.limitTexts : t.admin.settings.limitWords}
                               </span>
                             )}
                           </div>
@@ -398,12 +405,12 @@ export default function AdminSettingsPage() {
         padding: '20px 24px',
       }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1E40AF', marginBottom: 12 }}>
-          URL для вебхуков
+          {t.admin.settings.webhooksTitle}
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[
-            { label: 'Robokassa (Result URL)', url: `${API_URL}/api/webhooks/robokassa` },
-            { label: 'Prodamus (URL уведомления)', url: `${API_URL}/api/webhooks/prodamus` },
+            { label: t.admin.settings.robokassaUrl, url: `${API_URL}/api/webhooks/robokassa` },
+            { label: t.admin.settings.prodamusUrl, url: `${API_URL}/api/webhooks/prodamus` },
           ].map(w => (
             <div key={w.label}>
               <div style={{ fontSize: 12, color: '#2563EB', marginBottom: 4 }}>

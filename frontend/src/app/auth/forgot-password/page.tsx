@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { authApi } from '@/lib/auth-api';
+import { useI18n, tf } from '@/lib/i18n';
 
 export default function Page() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export default function Page() {
       setSent(true);
     } catch (err: unknown) {
       const error = err as { message?: string };
-      setError(error.message || 'Произошла ошибка.');
+      setError(error.message || t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 12,
           }}>
-            Проверьте почту
+            {t.auth.checkEmail}
           </h1>
           <p style={{
             fontSize: 15,
@@ -72,7 +74,7 @@ export default function Page() {
             marginBottom: 32,
             lineHeight: 1.6,
           }}>
-            Если аккаунт с email <strong style={{ color: '#1A1A1A' }}>{email}</strong> существует, мы отправили ссылку для сброса пароля.
+            {tf(t.auth.sentToEmail, { email })}
           </p>
           <Link
             href="/auth/login"
@@ -92,7 +94,7 @@ export default function Page() {
               transition: 'background 0.2s, transform 0.15s',
             }}
           >
-            ← Вернуться ко входу
+            {t.auth.backToLogin}
           </Link>
         </div>
       </div>
@@ -122,7 +124,7 @@ export default function Page() {
             fontWeight: 500,
             color: '#E8604A',
           }}>
-            <span>🔑</span> Забыли пароль?
+            <span>🔑</span> {t.auth.forgotPassword}
           </div>
           <h1 style={{
             fontFamily: "'Noto Serif JP'",
@@ -131,13 +133,13 @@ export default function Page() {
             color: '#1A1A1A',
             marginBottom: 8,
           }}>
-            Восстановление пароля
+            {t.auth.resetPasswordTitle}
           </h1>
           <p style={{
             fontSize: 15,
             color: '#8B7355',
           }}>
-            Введите email и мы отправим ссылку для сброса
+            {t.auth.forgotSubtitle}
           </p>
         </div>
 
@@ -170,7 +172,7 @@ export default function Page() {
                 color: '#1A1A1A',
                 marginBottom: 8,
               }}>
-                Email
+                {t.auth.email}
               </label>
               <input
                 type="email"
@@ -212,7 +214,7 @@ export default function Page() {
                 }
               }}
             >
-              {loading ? 'Отправка…' : 'Отправить ссылку'}
+              {loading ? t.auth.sending : t.auth.sendResetLink}
             </button>
           </form>
         </div>
@@ -232,7 +234,7 @@ export default function Page() {
               fontWeight: 500,
             }}
           >
-            ← Вернуться ко входу
+            {t.auth.backToLogin}
           </Link>
         </p>
       </div>

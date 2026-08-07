@@ -49,6 +49,64 @@ class PlansApiTest extends TestCase
         );
     }
 
+    public function test_plans_localize_features_for_english(): void
+    {
+        Setting::set('limit_texts_free', 5);
+        Setting::set('limit_vocab_standard', 1000);
+
+        $response = $this->getJson('/api/plans?lang=en');
+
+        $response->assertOk();
+
+        $plans = collect($response->json('plans'));
+
+        $free = $plans->firstWhere('id', 'free');
+        $this->assertContains('Up to 5 texts per month', $free['features']);
+
+        $standard = $plans->firstWhere('id', 'standard');
+        $this->assertContains('Vocabulary up to 1000 words', $standard['features']);
+
+        $premium = $plans->firstWhere('id', 'premium');
+        $this->assertContains('Unlimited texts per month', $premium['features']);
+        $this->assertContains('Unlimited vocabulary', $premium['features']);
+    }
+
+    public function test_plans_keep_russian_features_by_default(): void
+    {
+        Setting::set('limit_texts_standard', 50);
+
+        $response = $this->getJson('/api/plans');
+
+        $standard = collect($response->json('plans'))->firstWhere('id', 'standard');
+        $this->assertContains('До 50 текстов в месяц', $standard['features']);
+        $this->assertSame('RUB', $standard['currency']);
+    }
+
+    public function test_plans_convert_prices_to_usd_for_english(): void
+    {
+        Setting::set('plan_standard_price', 900);
+        Setting::set('plan_premium_price', 1800);
+        Setting::set('usd_rate', 90);
+
+        $response = $this->getJson('/api/plans?lang=en');
+
+        $response->assertOk();
+
+        $plans = collect($response->json('plans'));
+
+        $standard = $plans->firstWhere('id', 'standard');
+        $this->assertEqualsWithDelta(10.0, $standard['price'], 0.001);
+        $this->assertSame('USD', $standard['currency']);
+
+        $premium = $plans->firstWhere('id', 'premium');
+        $this->assertEqualsWithDelta(20.0, $premium['price'], 0.001);
+        $this->assertSame('USD', $premium['currency']);
+
+        $free = $plans->firstWhere('id', 'free');
+        $this->assertSame(0, $free['price']);
+        $this->assertSame('USD', $free['currency']);
+    }
+
     public function test_auth_me_includes_usage(): void
     {
         Setting::set('limit_texts_free', 5);
