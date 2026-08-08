@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { toApiUrl } from '@/lib/media-url';
 import { useI18n, tf } from '@/lib/i18n';
 
@@ -378,9 +379,9 @@ export default function AdminVideosPage() {
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               {/* Превью */}
-              <div style={{ width: 80, height: 48, borderRadius: 8, background: '#F3EFE9', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ position: 'relative', width: 80, height: 48, borderRadius: 8, background: '#F3EFE9', overflow: 'hidden', flexShrink: 0 }}>
                 {v.thumbnail_url
-                  ? <img src={toApiUrl(v.thumbnail_url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ? <Image unoptimized src={toApiUrl(v.thumbnail_url)} alt="" fill sizes="80px" style={{ objectFit: 'cover', display: 'block' }} />
                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D4C5B0' }}>▶</div>
                 }
               </div>

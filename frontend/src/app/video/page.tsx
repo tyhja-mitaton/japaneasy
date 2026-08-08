@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import PremiumGate from '@/components/PremiumGate';
 import { useI18n } from '@/lib/i18n';
 import { toApiUrl } from '@/lib/media-url';
@@ -149,7 +150,7 @@ export default function VideoGridPage() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
-            {videos.map(v => (
+            {videos.map((v, i) => (
               <button
                 key={v.id}
                 onClick={() => router.push(`/video/${v.id}`)}
@@ -178,10 +179,14 @@ export default function VideoGridPage() {
                 {/* Превью */}
                 <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#F3EFE9' }}>
                   {v.thumbnail_url ? (
-                    <img
+                    <Image
+                      unoptimized
                       src={toApiUrl(v.thumbnail_url)}
                       alt={v.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      fill
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      sizes="(max-width: 600px) 50vw, 250px"
+                      style={{ objectFit: 'cover', display: 'block' }}
                     />
                   ) : (
                     <div style={{

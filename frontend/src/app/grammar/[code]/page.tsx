@@ -7,11 +7,18 @@ import { useI18n, tf } from '@/lib/i18n';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+type RelatedArticle = {
+    id: number;
+    code: string;
+    title: string;
+};
+
 type Article = {
   title: string;
   info?: string;
   text: string;
   code: string;
+  related: RelatedArticle[];
 };
 
 export default function GrammarArticlePage() {
@@ -187,6 +194,53 @@ export default function GrammarArticlePage() {
             </div>
 
             {/* Code badge */}
+            {article.related && article.related.length > 0 && (
+                <div style={{ marginTop: 32 }}>
+                    <h2 style={{
+                        fontFamily: "'Noto Serif JP'",
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: '#1A1A1A',
+                        marginBottom: 16,
+                    }}>
+                        {t.grammar.seeAlso}
+                    </h2>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {article.related.map(r => (
+                            <button
+                                key={r.id}
+                                onClick={() => router.push(`/grammar/${r.code}`)}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    background: 'white',
+                                    border: '1px solid #EDE8E1',
+                                    borderRadius: 50,
+                                    padding: '10px 18px',
+                                    fontSize: 14,
+                                    color: '#2D5A3D',
+                                    cursor: 'pointer',
+                                    transition: 'border-color 0.2s, background 0.2s, transform 0.15s',
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = '#2D5A3D';
+                                    e.currentTarget.style.background = 'rgba(45,90,61,0.06)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = '#EDE8E1';
+                                    e.currentTarget.style.background = 'white';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                <span>→</span> {r.title}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div style={{
                 marginTop: 24,
                 display: 'flex',

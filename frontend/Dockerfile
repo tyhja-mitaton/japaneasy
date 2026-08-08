@@ -26,6 +26,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Публичный URL сайта — подставляется на этапе сборки (для canonical/OG)
+ARG SITE_URL
+ENV SITE_URL=${SITE_URL}
+
 RUN npm run build
 
 
@@ -36,6 +40,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+ARG SITE_URL
+ENV SITE_URL=${SITE_URL}
 
 # Только то, что нужно для запуска standalone-сервера
 COPY --from=builder /app/.next/standalone ./

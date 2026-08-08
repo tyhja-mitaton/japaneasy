@@ -3,10 +3,14 @@ services:
     build:
       context: ./frontend
       target: production          # используем production stage из Dockerfile
+      args:
+        SITE_URL: ${APP_URL}      # подставляется на этапе сборки (canonical/OG)
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${APP_URL}
+      - API_INTERNAL_URL=http://laravel:8000
+      - SITE_URL=${APP_URL}
     # Порт НЕ пробрасываем наружу — только через nginx
 
   laravel:

@@ -178,6 +178,7 @@ const translations = {
       notFoundTitle:  'Статья не найдена',
       notFoundHint:   'Статья для кода {code} ещё не создана.',
       backToList:     '← К списку грамматики',
+      seeAlso:        'Смотрите также',
     },
     // Настройки
     settings: {
@@ -238,6 +239,11 @@ const translations = {
       previewShow:    'Предпросмотр',
       previewEdit:    'Редактировать',
       previewLoading: 'Загрузка предпросмотра…',
+      relatedField:   'Связанные статьи',
+      relatedHint:    '(будут показаны в блоке «Смотрите также» под статьёй)',
+      relatedPlaceholder: 'Введите название или код статьи…',
+      relatedEmpty:   'Ничего не найдено',
+      relatedRemove:  'Убрать',
       errorGeneric:   'Произошла ошибка.',
     },
     // Общее
@@ -809,6 +815,7 @@ const translations = {
       notFoundTitle:  'Article not found',
       notFoundHint:   'The article for code {code} has not been created yet.',
       backToList:     '← Back to grammar',
+      seeAlso:        'See also',
     },
     settings: {
       title:        'Profile Settings',
@@ -866,6 +873,11 @@ const translations = {
       previewShow:    'Preview',
       previewEdit:    'Edit',
       previewLoading: 'Loading preview…',
+      relatedField:   'Related articles',
+      relatedHint:    '(shown in the "See also" block below the article)',
+      relatedPlaceholder: 'Type a title or code to search…',
+      relatedEmpty:   'Nothing found',
+      relatedRemove:  'Remove',
       errorGeneric:   'Something went wrong.',
     },
     common: {

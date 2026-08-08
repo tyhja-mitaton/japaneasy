@@ -192,34 +192,64 @@ class PaymentController extends Controller
     // ── Обработка успешного/неуспешного платежа ───────────────────────────────
     private function processPayment(string $invoiceId, string $status, float $amount): void
     {
-        $payment = Payment::where('id', $invoiceId)
-            ->orWhere('provider_invoice_id', $invoiceId)
-            ->first();
+        DB::transaction(function () use ($invoiceId, $status, $amount) {
+            $payment = Payment::where('id', $invoiceId)
+                ->orWhere('provider_invoice_id', $invoiceId)
+                ->lockForUpdate()
+                ->first();
 
-        if (!$payment) {
-            Log::error("Payment not found: {$invoiceId}");
-            return;
-        }
+            if (!$payment) {
+                Log::error("Payment not found: {$invoiceId}");
+                return;
+            }
 
-        DB::transaction(function () use ($payment, $status, $amount) {
+            // Идемпотентность: повторная доставка вебхука не продлевает подписку повторно
+            if ($payment->status === 'completed') {
+                return;
+            }
+
+            // Премиум выдаётся только если фактически оплатили не меньше суммы,
+            // посчитанной на сервере при инициации платежа.
+            $expected = (float) $payment->amount;
+
+            if ($status === 'completed' && $amount < $expected - 0.01) {
+                Log::warning('Payment amount below expected, premium NOT granted', [
+                    'payment_id' => $payment->id,
+                    'expected'   => $expected,
+                    'received'   => $amount,
+                ]);
+                $payment->update([
+                    'status'   => 'failed',
+                    'metadata' => array_merge(
+                        (array) $payment->metadata,
+                        ['amount_mismatch' => true, 'expected_amount' => $expected, 'received_amount' => $amount],
+                    ),
+                ]);
+
+                return;
+            }
+
             $payment->update([
-                'status'  => $status,
-                'paid_at' => $status === 'completed' ? now() : null,
-                'amount'  => $amount,
+                'status'      => $status,
+                'paid_at'     => $status === 'completed' ? now() : null,
+                'paid_amount' => $status === 'completed' ? $amount : null,
             ]);
 
             if ($status === 'completed' && $payment->subscription) {
                 $sub = $payment->subscription;
                 $sub->update(['status' => 'active']);
 
-                // Обновляем план пользователя
+                // Обновляем план пользователя, продлевая от конца текущей подписки
                 $months = match ($sub->period) {
                     '3m' => 3, '6m' => 6, '12m' => 12, default => 1,
                 };
+                $currentEnd = $payment->user->subscription_ends_at;
+                $base       = $currentEnd && $currentEnd->isFuture() ? $currentEnd : now();
+
                 $payment->user->update([
-                    'plan'                => $sub->plan,
-                    'subscription_period' => $sub->period,
-                    'subscription_ends_at' => now()->addMonths($months),
+                    'plan'                  => $sub->plan,
+                    'subscription_period'   => $sub->period,
+                    'subscription_ends_at'  => $base->copy()->addMonths($months),
                 ]);
             }
         });

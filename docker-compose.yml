@@ -3,6 +3,7 @@ services:
     build:
       context: ./frontend
       target: dev
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
@@ -10,7 +11,9 @@ services:
       - /app/node_modules        # не перезаписывать node_modules с хоста
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NODE_OPTIONS=--max-old-space-size=4096
+      - API_INTERNAL_URL=http://laravel:8000
+      - SITE_URL=http://localhost:8080
+      - NODE_OPTIONS=--max-old-space-size=2560
 
   laravel:
     build:

@@ -280,6 +280,7 @@ export default function VideoPlayer({ videoUrl, subtitles, title }: Props) {
           style={{ width: '100%', aspectRatio: '16 / 9', display: 'block' }}
           onClick={togglePlay}
           playsInline
+          preload="none"
         />
 
         {/* Субтитры поверх видео */}

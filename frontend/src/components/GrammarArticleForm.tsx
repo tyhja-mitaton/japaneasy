@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n';
 
@@ -120,6 +120,179 @@ function MarkdownEditorField({ name, label, value, placeholder, required, previe
     );
 }
 
+type RelatedArticle = {
+    id: number;
+    code: string;
+    title: string;
+    title_en?: string | null;
+};
+
+type RelatedArticlesPickerProps = {
+    value: RelatedArticle[];
+    excludeId?: number;
+    onChange: (items: RelatedArticle[]) => void;
+    placeholder: string;
+    emptyLabel: string;
+    removeLabel: string;
+};
+
+function RelatedArticlesPicker({ value, excludeId, onChange, placeholder, emptyLabel, removeLabel }: RelatedArticlesPickerProps) {
+    const { t } = useI18n();
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<RelatedArticle[]>([]);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const timerRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (timerRef.current) window.clearTimeout(timerRef.current);
+
+        const q = query.trim();
+        if (!q) {
+            return;
+        }
+
+        timerRef.current = window.setTimeout(() => {
+            setLoading(true);
+            apiFetch(`/api/admin/grammar-articles?search=${encodeURIComponent(q)}`)
+                .then(res => {
+                    const selected = new Set(value.map(v => v.id));
+                    if (excludeId) selected.add(excludeId);
+                    setResults((res.data ?? []).filter((a: RelatedArticle) => !selected.has(a.id)));
+                })
+                .catch(() => setResults([]))
+                .finally(() => setLoading(false));
+        }, 300);
+
+        return () => {
+            if (timerRef.current) window.clearTimeout(timerRef.current);
+        };
+    }, [query, value, excludeId]);
+
+    return (
+        <div>
+            <div style={{ position: 'relative' }}>
+                <input
+                    type="text"
+                    value={query}
+                    placeholder={placeholder}
+                    onChange={e => { setQuery(e.target.value); setOpen(true); }}
+                    onFocus={() => setOpen(true)}
+                    onBlur={() => setOpen(false)}
+                    style={inputStyle}
+                />
+                {open && query.trim() !== '' && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 6px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 50,
+                        background: 'white',
+                        border: '1px solid #EDE8E1',
+                        borderRadius: 12,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        maxHeight: 260,
+                        overflowY: 'auto',
+                    }}>
+                        {loading ? (
+                            <div style={{ padding: '12px 16px', fontSize: 14, color: '#8B7355' }}>
+                                {t.common.loading}
+                            </div>
+                        ) : results.length === 0 ? (
+                            <div style={{ padding: '12px 16px', fontSize: 14, color: '#8B7355' }}>
+                                {emptyLabel}
+                            </div>
+                        ) : (
+                            results.map(a => (
+                                <button
+                                    key={a.id}
+                                    type="button"
+                                    onMouseDown={e => e.preventDefault()}
+                                    onClick={() => {
+                                        onChange([...value, a]);
+                                        setQuery('');
+                                        setOpen(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 12,
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        background: 'none',
+                                        border: 'none',
+                                        borderBottom: '1px solid #F5F1EA',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        fontSize: 14,
+                                        color: '#1A1A1A',
+                                        transition: 'background 0.15s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = '#F7F3EE'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                    <span>{a.title}</span>
+                                    <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#8B7355', whiteSpace: 'nowrap' }}>
+                                        {a.code}
+                                    </span>
+                                </button>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {value.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                    {value.map(a => (
+                        <span
+                            key={a.id}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                background: 'rgba(37,99,235,0.08)',
+                                border: '1px solid rgba(37,99,235,0.2)',
+                                borderRadius: 50,
+                                padding: '6px 10px 6px 14px',
+                                fontSize: 13,
+                                color: '#1A1A1A',
+                            }}
+                        >
+                            <span>{a.title}</span>
+                            <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#2563EB' }}>{a.code}</span>
+                            <button
+                                type="button"
+                                aria-label={removeLabel}
+                                title={removeLabel}
+                                onClick={() => onChange(value.filter(v => v.id !== a.id))}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#8B7355',
+                                    fontSize: 15,
+                                    lineHeight: 1,
+                                    padding: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'color 0.15s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#D14A35'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
+                            >
+                                ×
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // Этот компонент используется и для создания, и для редактирования.
 // Если props.articleId передан — режим редактирования.
 export default function GrammarArticleForm({ articleId }: { articleId?: number }) {
@@ -130,13 +303,17 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
     const [loading, setLoading] = useState(false);
     const [preview, setPreview] = useState(false);
     const [previewEn, setPreviewEn] = useState(false);
+    const [related, setRelated] = useState<RelatedArticle[]>([]);
     const isEdit = !!articleId;
 
     useEffect(() => {
         if (!isEdit) return;
         apiFetch(`/api/admin/grammar-articles/${articleId}`)
-            .then(a => setForm({ title: a.title, code: a.code, info: a.info ?? '', text: a.text, pattern: a.pattern ?? '',
-                title_en: a.title_en, info_en: a.info_en, text_en: a.text_en }))
+            .then(a => {
+                setForm({ title: a.title, code: a.code, info: a.info ?? '', text: a.text, pattern: a.pattern ?? '',
+                    title_en: a.title_en, info_en: a.info_en, text_en: a.text_en });
+                setRelated(a.related_articles ?? []);
+            })
             .catch(() => router.push('/admin/grammar'));
     }, [articleId, isEdit, router]);
 
@@ -148,16 +325,17 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
         e.preventDefault();
         setError(null);
         setLoading(true);
+        const payload = { ...form, related_article_ids: related.map(r => r.id) };
         try {
             if (isEdit) {
                 await apiFetch(`/api/admin/grammar-articles/${articleId}`, {
                     method: 'PUT',
-                    body: JSON.stringify(form),
+                    body: JSON.stringify(payload),
                 });
             } else {
                 await apiFetch('/api/admin/grammar-articles', {
                     method: 'POST',
-                    body: JSON.stringify(form),
+                    body: JSON.stringify(payload),
                 });
             }
             router.push('/admin/grammar');
@@ -359,6 +537,27 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                             style={inputStyle}
                             onFocus={e => e.target.style.borderColor = '#2563EB'}
                             onBlur={e => e.target.style.borderColor = '#EDE8E1'}
+                        />
+                    </div>
+
+                    {/* Related articles */}
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{
+                            display: 'block',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: '#1A1A1A',
+                            marginBottom: 8,
+                        }}>
+                            {t.grammarForm.relatedField} <span style={{ color: '#8B7355', fontWeight: 400 }}>{t.grammarForm.relatedHint}</span>
+                        </label>
+                        <RelatedArticlesPicker
+                            value={related}
+                            excludeId={isEdit ? articleId : undefined}
+                            onChange={setRelated}
+                            placeholder={t.grammarForm.relatedPlaceholder}
+                            emptyLabel={t.grammarForm.relatedEmpty}
+                            removeLabel={t.grammarForm.relatedRemove}
                         />
                     </div>
 

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Payment extends Model
 {
     protected $fillable = [
-        'user_id', 'subscription_id', 'amount', 'currency', 'status',
+        'user_id', 'subscription_id', 'amount', 'paid_amount', 'currency', 'status',
         'provider', 'provider_payment_id', 'provider_invoice_id',
         'description', 'metadata', 'plan', 'period',
         'vat_included', 'vat_amount', 'paid_at',
@@ -19,6 +19,7 @@ class Payment extends Model
         'paid_at'      => 'datetime',
         'vat_included' => 'boolean',
         'amount'       => 'decimal:2',
+        'paid_amount'  => 'decimal:2',
         'vat_amount'   => 'decimal:2',
     ];
 

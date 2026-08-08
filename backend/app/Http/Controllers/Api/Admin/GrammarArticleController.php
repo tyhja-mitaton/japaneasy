@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\GrammarArticle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class GrammarArticleController extends Controller
 {
@@ -44,7 +46,9 @@ class GrammarArticleController extends Controller
 
     public function show(GrammarArticle $grammarArticle): JsonResponse
     {
-        return response()->json($grammarArticle->load('author:id,name'));
+        $grammarArticle->load('author:id,name');
+
+        return response()->json([...$grammarArticle->toArray(), 'related_articles' => $this->relatedArticlesPayload($grammarArticle)]);
     }
 
     /**
@@ -73,14 +77,22 @@ class GrammarArticleController extends Controller
             'info_en'  => ['nullable', 'string', 'max:500'],
             'text'  => ['required', 'string'],
             'text_en'  => ['nullable', 'string'],
+            'related_article_ids' => ['sometimes', 'array'],
+            'related_article_ids.*' => ['integer', 'exists:grammar_articles,id'],
         ]);
+
+        $relatedIds = Arr::pull($data, 'related_article_ids', []);
 
         $article = GrammarArticle::create([
             ...$data,
             'author_id' => $request->user()->id,
         ]);
 
-        return response()->json($article->load('author:id,name'), 201);
+        $this->syncRelated($article, $relatedIds);
+
+        $article->load('author:id,name');
+
+        return response()->json([...$article->toArray(), 'related_articles' => $this->relatedArticlesPayload($article)], 201);
     }
 
     public function update(Request $request, GrammarArticle $grammarArticle): JsonResponse
@@ -95,11 +107,18 @@ class GrammarArticleController extends Controller
             'info_en'  => ['nullable', 'string', 'max:500'],
             'text'  => ['sometimes', 'string'],
             'text_en'  => ['nullable', 'string'],
+            'related_article_ids' => ['sometimes', 'array'],
+            'related_article_ids.*' => ['integer', 'exists:grammar_articles,id', 'not_in:' . $grammarArticle->id],
         ]);
 
-        $grammarArticle->update($data);
+        $relatedIds = Arr::pull($data, 'related_article_ids', []);
 
-        return response()->json($grammarArticle->fresh('author:id,name'));
+        $grammarArticle->update($data);
+        $this->syncRelated($grammarArticle, $relatedIds);
+
+        $grammarArticle->load('author:id,name');
+
+        return response()->json([...$grammarArticle->toArray(), 'related_articles' => $this->relatedArticlesPayload($grammarArticle)]);
     }
 
     public function destroy(GrammarArticle $grammarArticle): JsonResponse
@@ -143,7 +162,67 @@ class GrammarArticleController extends Controller
             'author'          => $article->author,
             'created_at'      => $article->created_at,
             'updated_at'      => $article->updated_at,
+            'related'         => $this->relatedArticlesPayload($article, localized: true, lang: $lang),
         ];
+    }
+
+    /**
+     * Возвращает связанные статьи. Связи симметричны: пары хранятся в обе стороны.
+     */
+    private function relatedArticlesPayload(GrammarArticle $article, bool $localized = false, string $lang = 'ru'): array
+    {
+        $useEn = $lang === 'en';
+
+        return $article->relatedArticles()
+            ->get(['grammar_articles.id', 'grammar_articles.code', 'grammar_articles.title', 'grammar_articles.title_en'])
+            ->map(function (GrammarArticle $related) use ($localized, $useEn) {
+                if ($localized) {
+                    return [
+                        'id'    => $related->id,
+                        'code'  => $related->code,
+                        'title' => ($useEn && $related->title_en) ? $related->title_en : $related->title,
+                    ];
+                }
+
+                return [
+                    'id'       => $related->id,
+                    'code'     => $related->code,
+                    'title'    => $related->title,
+                    'title_en' => $related->title_en,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Синхронизирует связанные статьи: удаляет старые связи (в обе стороны) и
+     * создаёт новые пары в обе стороны для симметрии.
+     */
+    private function syncRelated(GrammarArticle $article, array $ids): void
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $ids),
+            fn (int $id): bool => $id !== $article->id,
+        )));
+
+        DB::table('grammar_article_related')
+            ->where('article_id', $article->id)
+            ->orWhere('related_article_id', $article->id)
+            ->delete();
+
+        if ($ids === []) {
+            return;
+        }
+
+        $now  = now();
+        $rows = [];
+        foreach ($ids as $relatedId) {
+            $rows[] = ['article_id' => $article->id, 'related_article_id' => $relatedId, 'created_at' => $now, 'updated_at' => $now];
+            $rows[] = ['article_id' => $relatedId, 'related_article_id' => $article->id, 'created_at' => $now, 'updated_at' => $now];
+        }
+
+        DB::table('grammar_article_related')->insert($rows);
     }
 
 }
