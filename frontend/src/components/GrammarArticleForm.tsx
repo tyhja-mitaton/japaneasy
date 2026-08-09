@@ -404,7 +404,7 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                         onMouseEnter={e => e.currentTarget.style.color = '#2563EB'}
                         onMouseLeave={e => e.currentTarget.style.color = '#8B7355'}
                     >
-                        ← {t.grammarForm.backToList}
+                        {t.grammarForm.backToList}
                     </button>
                     <h1 style={{
                         fontFamily: "'Noto Serif JP'",

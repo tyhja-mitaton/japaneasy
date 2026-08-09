@@ -111,7 +111,7 @@ export default function Page() {
             transition: 'background 0.2s, transform 0.15s',
           }}
         >
-          <span>+</span> {t.admin.grammar.newArticle}
+          {t.admin.grammar.newArticle}
         </Link>
       </div>
 
