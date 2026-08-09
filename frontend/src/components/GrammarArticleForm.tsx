@@ -120,6 +120,22 @@ function MarkdownEditorField({ name, label, value, placeholder, required, previe
     );
 }
 
+const PATTERN_SHORTCUTS: { label: string; value: string }[] = [
+    { label: 'noun', value: 'meishi' },
+    { label: 'adj', value: 'keiyoshi' },
+    { label: 'adj.noun', value: 'keiyodoushi' },
+    { label: 'verb', value: 'doushi' },
+    { label: 'pronoun', value: 'daimeish' },
+    { label: 'base', value: 'kohonkei' },
+    { label: 'past', value: 'kakokei' },
+    { label: 'negative', value: 'hiteikei' },
+    { label: 'conj', value: 'renyokei' },
+    { label: 'after', value: '[]' },
+    { label: 'include', value: '{}' },
+    { label: 'or', value: '|' },
+    { label: 'as is', value: '!' },
+];
+
 type RelatedArticle = {
     id: number;
     code: string;
@@ -304,7 +320,25 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
     const [preview, setPreview] = useState(false);
     const [previewEn, setPreviewEn] = useState(false);
     const [related, setRelated] = useState<RelatedArticle[]>([]);
+    const patternRef = useRef<HTMLInputElement>(null);
     const isEdit = !!articleId;
+
+    const insertPattern = (token: string) => {
+        const input = patternRef.current;
+        setForm(prev => {
+            const start = input?.selectionStart ?? prev.pattern.length;
+            const end = input?.selectionEnd ?? start;
+            const next = prev.pattern.slice(0, start) + token + prev.pattern.slice(end);
+            requestAnimationFrame(() => {
+                if (input) {
+                    input.focus();
+                    const pos = start + token.length;
+                    input.setSelectionRange(pos, pos);
+                }
+            });
+            return { ...prev, pattern: next };
+        });
+    };
 
     useEffect(() => {
         if (!isEdit) return;
@@ -485,7 +519,42 @@ export default function GrammarArticleForm({ articleId }: { articleId?: number }
                         }}>
                             {t.grammar.patternField}
                         </label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                            {PATTERN_SHORTCUTS.map(s => (
+                                <button
+                                    key={s.label}
+                                    type="button"
+                                    onClick={() => insertPattern(s.value)}
+                                    title={s.value}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        background: 'rgba(37,99,235,0.06)',
+                                        border: '1px solid rgba(37,99,235,0.18)',
+                                        borderRadius: 50,
+                                        padding: '4px 10px',
+                                        fontSize: 12,
+                                        cursor: 'pointer',
+                                        color: '#1A1A1A',
+                                        transition: 'background 0.15s, border-color 0.15s',
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(37,99,235,0.12)';
+                                        e.currentTarget.style.borderColor = 'rgba(37,99,235,0.35)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(37,99,235,0.06)';
+                                        e.currentTarget.style.borderColor = 'rgba(37,99,235,0.18)';
+                                    }}
+                                >
+                                    {s.label}
+                                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#8B7355' }}>{s.value}</span>
+                                </button>
+                            ))}
+                        </div>
                         <input
+                            ref={patternRef}
                             name="pattern"
                             value={form.pattern}
                             onChange={handleChange}

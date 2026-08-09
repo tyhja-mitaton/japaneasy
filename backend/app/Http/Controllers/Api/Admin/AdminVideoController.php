@@ -62,7 +62,7 @@ class AdminVideoController extends Controller
 
         $videoPath = $request->file('video')->store(
             'videos/' . date('Y/m'),
-            'public'
+            'local'
         );
 
         $thumbnailPath = null;
@@ -105,11 +105,11 @@ class AdminVideoController extends Controller
 
     public function destroy(Video $video): JsonResponse
     {
-        Storage::disk('public')->delete($video->file_path);
+        Storage::disk('local')->delete($video->file_path);
         if ($video->thumbnail_path) {
             Storage::disk('public')->delete($video->thumbnail_path);
         }
-        $video->subtitles->each(fn ($s) => Storage::disk('public')->delete($s->file_path));
+        $video->subtitles->each(fn ($s) => Storage::disk('local')->delete($s->file_path));
         $video->delete();
 
         return response()->json(['message' => 'Deleted.']);
@@ -135,7 +135,7 @@ class AdminVideoController extends Controller
         }
 
         $path = 'subtitles/' . $video->id . '/' . Str::slug($data['label']) . '-' . time() . '.vtt';
-        Storage::disk('public')->put($path, $content);
+        Storage::disk('local')->put($path, $content);
 
         if ($data['is_default'] ?? false) {
             $video->subtitles()->update(['is_default' => false]);
@@ -159,7 +159,7 @@ class AdminVideoController extends Controller
 
     public function destroySubtitle(Video $video, Subtitle $subtitle): JsonResponse
     {
-        Storage::disk('public')->delete($subtitle->file_path);
+        Storage::disk('local')->delete($subtitle->file_path);
         $subtitle->delete();
         return response()->json(['message' => 'Subtitle deleted.']);
     }

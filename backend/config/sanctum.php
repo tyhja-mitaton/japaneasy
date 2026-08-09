@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Tokens expire after 7 days. Frontend redirects to /login on 401.
+    'expiration' => (int) env('SANCTUM_TOKEN_TTL_MINUTES', 60 * 24 * 7),
 
     /*
     |--------------------------------------------------------------------------

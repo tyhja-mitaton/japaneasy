@@ -189,4 +189,19 @@ class GrammarArticleRelatedTest extends TestCase
         ])
             ->assertUnprocessable();
     }
+
+    public function test_store_rejects_html_in_title_and_info(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/grammar-articles', [
+            'title'   => '</script><script>alert(1)</script>',
+            'code'    => 'xss-title',
+            'pattern' => 'X',
+            'info'    => 'Красивое описание',
+            'text'    => 'Текст.',
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('grammar_articles', ['code' => 'xss-title']);
+    }
 }

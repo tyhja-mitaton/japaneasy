@@ -1,23 +1,41 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field
 import fugashi
+import os
 
 app = FastAPI(title="Japanese NLP Service")
+
+# Обязательный общий секрет — сервис доступен только внутренним клиентам.
+# Без токена эндпоинты (кроме /health) отвечают 401.
+NLP_SERVICE_TOKEN = os.environ.get("NLP_SERVICE_TOKEN", "")
+if not NLP_SERVICE_TOKEN:
+    raise RuntimeError("NLP_SERVICE_TOKEN env is required")
+
+_security = HTTPBearer(auto_error=False)
+
+def require_token(credentials: HTTPAuthorizationCredentials = Depends(_security)):
+    if not credentials or credentials.credentials != NLP_SERVICE_TOKEN:
+        raise HTTPException(status_code=401, detail="invalid token")
+    return credentials
 
 # Инициализируем тагер один раз при старте
 tagger = fugashi.Tagger()
 
+MAX_TEXT_LEN = 100_000
+MAX_PATTERNS = 500
+
 class TextRequest(BaseModel):
-    text: str
+    text: str = Field(..., max_length=MAX_TEXT_LEN)
 
 
 class WordRequest(BaseModel):
-    word: str
+    word: str = Field(..., max_length=200)
 
 
 class GrammarRequest(BaseModel):
-    text: str
-    patterns: list[dict] = []   # [{code: str, pattern: str}, ...]
+    text: str = Field(..., max_length=MAX_TEXT_LEN)
+    patterns: list[dict] = Field(default=[], max_length=MAX_PATTERNS)   # [{code: str, pattern: str}, ...]
 
 
 class WordResponse(BaseModel):
@@ -464,7 +482,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/analyze/word", response_model=WordResponse)
+@app.post("/analyze/word", response_model=WordResponse, dependencies=[Depends(require_token)])
 def analyze_word(req: WordRequest):
     if not req.word:
         raise HTTPException(status_code=422, detail="Word is empty")
@@ -488,14 +506,14 @@ def analyze_word(req: WordRequest):
         "pos":       main_token.feature.pos1 or "",
     }
 
-@app.post("/tokenize")
+@app.post("/tokenize", dependencies=[Depends(require_token)])
 def tokenize(req: TextRequest):
     if not req.text:
         raise HTTPException(status_code=422, detail="Text is empty")
     return {"tokens": tokenize_text(req.text)}
 
 
-@app.post("/grammar")
+@app.post("/grammar", dependencies=[Depends(require_token)])
 def analyze_grammar(req: GrammarRequest):
     """
     Грамматический анализ на основе паттернов из БД.

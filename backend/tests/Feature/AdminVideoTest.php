@@ -20,6 +20,7 @@ class AdminVideoTest extends TestCase
         parent::setUp();
 
         Storage::fake('public');
+        Storage::fake('local');
 
         Role::findOrCreate('user', 'web');
         Role::findOrCreate('manager', 'web');

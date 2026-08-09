@@ -36,7 +36,8 @@ return [
     ],
 
     'nlp' => [
-        'url' => env('NLP_SERVICE_URL', 'http://nlp:8001'),
+        'url'   => env('NLP_SERVICE_URL', 'http://nlp:8001'),
+        'token' => env('NLP_SERVICE_TOKEN', ''),
     ],
 
 ];

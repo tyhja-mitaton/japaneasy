@@ -81,6 +81,18 @@ class AdminUserController extends Controller
             'name', 'email', 'plan', 'subscription_period', 'subscription_ends_at',
         ]));
 
+        // Смена ролей — только для администратора (защита от эскалации manager -> administrator)
+        if (isset($data['roles']) && !$request->user()->hasRole('administrator')) {
+            return response()->json(['message' => 'Только администратор может менять роли.'], 403);
+        }
+
+        // Нельзя менять собственные роль и тариф (защита от самоповышения)
+        $privileged = isset($data['roles']) || isset($data['plan'])
+            || isset($data['subscription_period']) || isset($data['subscription_ends_at']);
+        if ($request->user()->id === $user->id && $privileged) {
+            return response()->json(['message' => 'Нельзя менять свои роль и тариф.'], 403);
+        }
+
         if (isset($update['subscription_ends_at'])) {
             $update['subscription_ends_at'] = $update['subscription_ends_at'] !== null
                 ? now()->parse($update['subscription_ends_at'])

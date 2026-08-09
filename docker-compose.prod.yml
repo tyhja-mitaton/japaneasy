@@ -34,6 +34,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - NLP_SERVICE_URL=http://nlp:8001
+      - NLP_SERVICE_TOKEN=${NLP_SERVICE_TOKEN}
       - STRIPE_KEY=${STRIPE_KEY}
       - STRIPE_SECRET=${STRIPE_SECRET}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
@@ -44,7 +45,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      - LLM_API_KEY=${LLM_API_KEY}
+      - NLP_SERVICE_TOKEN=${NLP_SERVICE_TOKEN}
     # NLP не торчит наружу — только laravel может до него достучаться
 
   nginx:
@@ -54,10 +55,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      # Шаблон — envsubst подставит ${APP_DOMAIN} на старте (nginx официальный образ)
+      - ./nginx/nginx.prod.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       # Статика Next.js — nginx отдаёт напрямую, минуя Node
       - frontend_static:/var/www/frontend/.next/static:ro
       - ./ssl:/etc/nginx/ssl:ro           # сертификаты (Let's Encrypt)
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN}
     depends_on:
       - frontend
       - laravel

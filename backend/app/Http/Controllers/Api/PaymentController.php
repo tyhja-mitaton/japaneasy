@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\Payment\PaymentManager;
+use App\Services\Payment\PaymentProviderConfigurationException;
 use App\Services\PlanLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -136,6 +137,10 @@ class PaymentController extends Controller
                 'amount'       => $amount,
                 'currency'     => 'RUB',
             ]);
+        } catch (PaymentProviderConfigurationException $e) {
+            DB::rollBack();
+            Log::error('Payment provider not configured', ['provider' => $provider, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Платёжная система не настроена. Обратитесь в поддержку.'], 422);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Payment initiation failed', ['error' => $e->getMessage()]);
@@ -161,14 +166,19 @@ class PaymentController extends Controller
     // ── Вебхук Robokassa ──────────────────────────────────────────────────────
     public function webhookRobokassa(Request $request): Response
     {
-        $result = $this->paymentManager->driver('robokassa')->verifyWebhook($request);
-
-        if ($result === false) {
-            Log::warning('Robokassa webhook: invalid signature', $request->all());
+        try {
+            $result = $this->paymentManager->driver('robokassa')->verifyWebhook($request);
+        } catch (PaymentProviderConfigurationException $e) {
+            Log::error('Robokassa misconfigured, webhook rejected', ['error' => $e->getMessage()]);
             return response('bad sign', 400);
         }
 
-        $this->processPayment($result['invoice_id'], $result['status'], $result['amount']);
+        if ($result === false) {
+            Log::warning('Robokassa webhook: invalid signature', ['inv_id' => $request->input('InvId')]);
+            return response('bad sign', 400);
+        }
+
+        $this->processPayment($result['invoice_id'], $result['status'], $result['amount'], $result['provider'] ?? 'robokassa');
 
         // Robokassa требует ответ "OK{InvId}"
         return response('OK' . $request->input('InvId'));
@@ -177,22 +187,27 @@ class PaymentController extends Controller
     // ── Вебхук Prodamus ───────────────────────────────────────────────────────
     public function webhookProdamus(Request $request): JsonResponse
     {
-        $result = $this->paymentManager->driver('prodamus')->verifyWebhook($request);
-
-        if ($result === false) {
-            Log::warning('Prodamus webhook: invalid signature', $request->all());
+        try {
+            $result = $this->paymentManager->driver('prodamus')->verifyWebhook($request);
+        } catch (PaymentProviderConfigurationException $e) {
+            Log::error('Prodamus misconfigured, webhook rejected', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'invalid signature'], 400);
         }
 
-        $this->processPayment($result['invoice_id'], $result['status'], $result['amount']);
+        if ($result === false) {
+            Log::warning('Prodamus webhook: invalid signature', ['order_id' => $request->input('order_id')]);
+            return response()->json(['error' => 'invalid signature'], 400);
+        }
+
+        $this->processPayment($result['invoice_id'], $result['status'], $result['amount'], $result['provider'] ?? 'prodamus');
 
         return response()->json(['success' => true]);
     }
 
     // ── Обработка успешного/неуспешного платежа ───────────────────────────────
-    private function processPayment(string $invoiceId, string $status, float $amount): void
+    private function processPayment(string $invoiceId, string $status, float $amount, ?string $provider = null): void
     {
-        DB::transaction(function () use ($invoiceId, $status, $amount) {
+        DB::transaction(function () use ($invoiceId, $status, $amount, $provider) {
             $payment = Payment::where('id', $invoiceId)
                 ->orWhere('provider_invoice_id', $invoiceId)
                 ->lockForUpdate()
@@ -203,17 +218,28 @@ class PaymentController extends Controller
                 return;
             }
 
+            // Вебхук пришёл от провайдера, отличного от того, через кого создан платёж
+            if ($provider !== null && $payment->provider !== $provider) {
+                Log::warning('Payment provider mismatch, premium NOT granted', [
+                    'payment_id' => $payment->id,
+                    'expected'   => $payment->provider,
+                    'received'   => $provider,
+                ]);
+
+                return;
+            }
+
             // Идемпотентность: повторная доставка вебхука не продлевает подписку повторно
             if ($payment->status === 'completed') {
                 return;
             }
 
-            // Премиум выдаётся только если фактически оплатили не меньше суммы,
-            // посчитанной на сервере при инициации платежа.
+            // Премиум выдаётся только если фактически оплатили сумму, посчитанную
+            // на сервере при инициации платежа (допуск — 1 копейка).
             $expected = (float) $payment->amount;
 
-            if ($status === 'completed' && $amount < $expected - 0.01) {
-                Log::warning('Payment amount below expected, premium NOT granted', [
+            if ($status === 'completed' && abs($amount - $expected) > 0.01) {
+                Log::warning('Payment amount mismatch, premium NOT granted', [
                     'payment_id' => $payment->id,
                     'expected'   => $expected,
                     'received'   => $amount,

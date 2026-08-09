@@ -49,6 +49,13 @@ class AdminDictionaryController extends Controller
 
         $path = $data['path'];
 
+        // Path allowlist: импортировать можно только из каталога словарей
+        $base = realpath(storage_path('dictionaries'));
+        $resolved = realpath($path);
+        if ($base === false || $resolved === false || !str_starts_with($resolved, $base . DIRECTORY_SEPARATOR)) {
+            return response()->json(['message' => "Path outside dictionary storage is not allowed"], 422);
+        }
+
         if (!is_dir($path)) {
             return response()->json(['message' => "Directory not found: {$path}"], 422);
         }

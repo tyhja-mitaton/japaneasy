@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\URL;
 
 class Video extends Model
 {
@@ -30,9 +31,19 @@ class Video extends Model
         return $this->hasMany(Subtitle::class);
     }
 
-    public function getVideoUrlAttribute(): string
+    public function getVideoUrlAttribute(): ?string
     {
-        return $this->relativeStorageUrl($this->file_path);
+        if (!$this->file_path) {
+            return null;
+        }
+
+        // Видеофайл хранится на приватном диске — доступ только по
+        // временной подписанной ссылке (30 минут), т.к. <video> не умеет
+        // слать Authorization-заголовок. Относительная ссылка: хост подставляет
+        // фронтенд (toApiUrl), т.к. APP_URL не совпадает с реальным адресом.
+        return URL::temporarySignedRoute('videos.stream', now()->addMinutes(30), [
+            'video' => $this->id,
+        ], false);
     }
 
     public function getThumbnailUrlAttribute(): ?string

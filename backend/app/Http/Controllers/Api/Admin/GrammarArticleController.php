@@ -69,12 +69,12 @@ class GrammarArticleController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'title_en' => ['nullable', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:255', 'not_regex:/[<>]/'],
+            'title_en' => ['nullable', 'string', 'max:255', 'not_regex:/[<>]/'],
             'code'  => ['required', 'string', 'max:100', 'unique:grammar_articles,code', 'regex:/^[a-z0-9\-]+$/'],
             'pattern' => ['required', 'string', 'max:100'],
-            'info'  => ['nullable', 'string', 'max:500'],
-            'info_en'  => ['nullable', 'string', 'max:500'],
+            'info'  => ['nullable', 'string', 'max:500', 'not_regex:/[<>]/'],
+            'info_en'  => ['nullable', 'string', 'max:500', 'not_regex:/[<>]/'],
             'text'  => ['required', 'string'],
             'text_en'  => ['nullable', 'string'],
             'related_article_ids' => ['sometimes', 'array'],
@@ -98,13 +98,13 @@ class GrammarArticleController extends Controller
     public function update(Request $request, GrammarArticle $grammarArticle): JsonResponse
     {
         $data = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'title_en' => ['nullable', 'string', 'max:255'],
+            'title' => ['sometimes', 'string', 'max:255', 'not_regex:/[<>]/'],
+            'title_en' => ['nullable', 'string', 'max:255', 'not_regex:/[<>]/'],
             'code'  => ['sometimes', 'string', 'max:100', 'regex:/^[a-z0-9\-]+$/',
                         "unique:grammar_articles,code,{$grammarArticle->id}"],
             'pattern' => ['required', 'string', 'max:100'],
-            'info'  => ['nullable', 'string', 'max:500'],
-            'info_en'  => ['nullable', 'string', 'max:500'],
+            'info'  => ['nullable', 'string', 'max:500', 'not_regex:/[<>]/'],
+            'info_en'  => ['nullable', 'string', 'max:500', 'not_regex:/[<>]/'],
             'text'  => ['sometimes', 'string'],
             'text_en'  => ['nullable', 'string'],
             'related_article_ids' => ['sometimes', 'array'],

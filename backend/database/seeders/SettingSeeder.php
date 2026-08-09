@@ -12,7 +12,7 @@ class SettingSeeder extends Seeder
         $defaults = [
             // ── Платёжная система ──────────────────────────────────────────
             ['key' => 'payment_provider',       'value' => 'robokassa',  'description' => 'Активная платёжная система (robokassa|prodamus)'],
-            ['key' => 'payment_test_mode',      'value' => '1',          'description' => 'Тестовый режим (1|0)'],
+            ['key' => 'payment_test_mode',      'value' => '0',          'description' => 'Тестовый режим (1|0)'],
 
             // ── Тарифы ────────────────────────────────────────────────────
             ['key' => 'plan_standard_price',    'value' => '300',        'description' => 'Цена Standard (руб/мес)'],
@@ -36,7 +36,7 @@ class SettingSeeder extends Seeder
             ['key' => 'robokassa_login',        'value' => '',           'description' => 'Robokassa MerchantLogin'],
             ['key' => 'robokassa_password1',    'value' => '',           'description' => 'Robokassa Password1 (для создания счёта)'],
             ['key' => 'robokassa_password2',    'value' => '',           'description' => 'Robokassa Password2 (для проверки вебхука)'],
-            ['key' => 'robokassa_hash_algo',    'value' => 'md5',        'description' => 'Алгоритм подписи (md5|sha256|sha384|sha512)'],
+            ['key' => 'robokassa_hash_algo',    'value' => 'sha256',     'description' => 'Алгоритм подписи (sha256|sha384|sha512)'],
 
             // ── Prodamus ──────────────────────────────────────────────────
             ['key' => 'prodamus_shop_url',      'value' => '',           'description' => 'Prodamus shop URL (example.payform.ru)'],

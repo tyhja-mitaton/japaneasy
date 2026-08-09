@@ -103,11 +103,16 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $status = Password::sendResetLink($request->only('email'));
+        $user = User::where('email', $request->input('email'))->first();
 
-        return $status === Password::RESET_LINK_SENT
-            ? response()->json(['message' => 'Password reset link sent to your email.'])
-            : response()->json(['message' => 'Email not found.'], 404);
+        if ($user) {
+            Password::sendResetLink($request->only('email'));
+        }
+
+        // Одинаковый ответ в любом случае — без перечисления зарегистрированных адресов
+        return response()->json([
+            'message' => 'Если аккаунт с таким email существует, мы отправили ссылку для сброса пароля.',
+        ]);
     }
 
     public function resetPassword(Request $request): JsonResponse

@@ -210,4 +210,57 @@ class AdminUserTest extends TestCase
                 'import_progress' => 42,
             ]);
     }
+
+    public function test_manager_cannot_change_roles(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('manager');
+        $target = User::factory()->create();
+        $target->assignRole('user');
+
+        Sanctum::actingAs($manager);
+
+        $this->putJson("/api/admin/users/{$target->id}", ['roles' => ['administrator']])
+            ->assertForbidden();
+
+        $this->assertFalse($target->fresh()->hasRole('administrator'));
+    }
+
+    public function test_manager_cannot_promote_self(): void
+    {
+        $manager = User::factory()->create();
+        $manager->assignRole('manager');
+
+        Sanctum::actingAs($manager);
+
+        $this->putJson("/api/admin/users/{$manager->id}", ['roles' => ['administrator']])
+            ->assertForbidden();
+
+        $this->assertFalse($manager->fresh()->hasRole('administrator'));
+    }
+
+    public function test_user_cannot_change_own_plan(): void
+    {
+        $user = User::factory()->create(['plan' => 'free']);
+        $user->assignRole('user');
+
+        Sanctum::actingAs($user);
+
+        $this->putJson("/api/admin/users/{$user->id}", ['plan' => 'premium'])
+            ->assertForbidden();
+
+        $this->assertSame('free', $user->fresh()->plan);
+    }
+
+    public function test_admin_cannot_change_own_roles(): void
+    {
+        $admin = $this->admin();
+
+        Sanctum::actingAs($admin);
+
+        $this->putJson("/api/admin/users/{$admin->id}", ['roles' => ['user']])
+            ->assertForbidden();
+
+        $this->assertTrue($admin->fresh()->hasRole('administrator'));
+    }
 }

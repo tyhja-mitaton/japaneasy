@@ -58,7 +58,7 @@ class VideoController extends Controller
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $disk = Storage::disk('public');
+        $disk = Storage::disk('local');
 
         if (!$disk->exists($subtitle->file_path)) {
             return response()->json(['message' => 'Not found'], 404);
@@ -67,5 +67,40 @@ class VideoController extends Controller
         return response($disk->get($subtitle->file_path), 200, [
             'Content-Type' => 'text/vtt; charset=UTF-8',
         ]);
+    }
+
+    /**
+     * Потоковая передача видео по временной подписанной ссылке.
+     * Публичный маршрут (без auth) — защита за счёт подписи: <video> не может
+     * слать Authorization-заголовок. Срок жизни подписи — 30 минут.
+     */
+    public function stream(Video $video, Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        if (!$request->hasValidRelativeSignature()) {
+            abort(403, 'Invalid or expired stream link');
+        }
+
+        if (!$video->is_published) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('local');
+
+        if (!$video->file_path || !$disk->exists($video->file_path)) {
+            abort(404);
+        }
+
+        // BinaryFileResponse сам обрабатывает Range-запросы (перемотка)
+        return new \Symfony\Component\HttpFoundation\BinaryFileResponse(
+            $disk->path($video->file_path),
+            200,
+            [
+                'Content-Type'        => $disk->mimeType($video->file_path) ?: 'application/octet-stream',
+                'Content-Disposition' => 'inline',
+                'Cache-Control'       => 'private, no-store',
+            ],
+            true,
+            'inline',
+        );
     }
 }

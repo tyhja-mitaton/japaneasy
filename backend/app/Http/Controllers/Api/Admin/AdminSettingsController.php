@@ -9,6 +9,37 @@ use Illuminate\Http\Request;
 
 class AdminSettingsController extends Controller
 {
+    // Allowlist ключей — всё что не перечислено здесь, обновить нельзя
+    private const ALLOWED_KEYS = [
+        // Платёжная система
+        'payment_provider',
+        'payment_test_mode',
+        // Тарифы
+        'plan_standard_price',
+        'plan_premium_price',
+        'usd_rate',
+        // Лимиты тарифов
+        'limit_texts_free',
+        'limit_texts_standard',
+        'limit_texts_premium',
+        'limit_vocab_free',
+        'limit_vocab_standard',
+        'limit_vocab_premium',
+        // Налоги
+        'vat_enabled',
+        'vat_rate',
+        'business_type',
+        // Robokassa
+        'robokassa_login',
+        'robokassa_password1',
+        'robokassa_password2',
+        'robokassa_hash_algo',
+        // Prodamus
+        'prodamus_shop_url',
+        'prodamus_api_key',
+        'prodamus_secret_key',
+    ];
+
     // Ключи которые нельзя вернуть в открытом виде
     private const SENSITIVE = [
         'robokassa_password1',
@@ -43,6 +74,11 @@ class AdminSettingsController extends Controller
         foreach ($data['settings'] as $item) {
             $key   = $item['key'];
             $value = $item['value'] ?? '';
+
+            // Allowlist: незнакомые ключи игнорируем
+            if (!in_array($key, self::ALLOWED_KEYS)) {
+                continue;
+            }
 
             // Не обновляем маскированные значения (если пользователь не менял)
             if (in_array($key, self::SENSITIVE) && str_contains($value, '****')) {

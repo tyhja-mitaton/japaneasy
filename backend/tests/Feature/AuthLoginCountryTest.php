@@ -41,4 +41,19 @@ class AuthLoginCountryTest extends TestCase
 
         $this->assertSame('KZ', $user->fresh()->country);
     }
+
+    public function test_forgot_password_does_not_enumerate_emails(): void
+    {
+        User::factory()->create(['email' => 'exists@example.com']);
+
+        $known = $this->postJson('/api/auth/forgot-password', ['email' => 'exists@example.com'])
+            ->assertOk()
+            ->json('message');
+
+        $unknown = $this->postJson('/api/auth/forgot-password', ['email' => 'nobody@example.com'])
+            ->assertOk()
+            ->json('message');
+
+        $this->assertSame($known, $unknown);
+    }
 }

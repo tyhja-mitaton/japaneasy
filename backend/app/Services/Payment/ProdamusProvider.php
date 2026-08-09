@@ -23,6 +23,13 @@ class ProdamusProvider implements PaymentProviderInterface
 
     public function createInvoice(Payment $payment, User $user): array
     {
+        // Fail-closed: без настроенных ключей счёт не создаём
+        if ($this->shopUrl === '' || $this->apiKey === '' || $this->secretKey === '') {
+            throw new PaymentProviderConfigurationException(
+                'Prodamus is not configured (missing shop_url/api_key/secret_key)'
+            );
+        }
+
         // Prodamus: создаём платёжную ссылку через API
         $payload = [
             'order_id'     => $payment->id,
@@ -61,6 +68,12 @@ class ProdamusProvider implements PaymentProviderInterface
     public function verifyWebhook(Request $request): array|false
     {
         $data = $request->all();
+
+        // Fail-closed: без секрета подпись не может быть валидной
+        if ($this->secretKey === '') {
+            return false;
+        }
+
         $receivedSign = $data['sign'] ?? '';
         unset($data['sign']);
 
@@ -82,6 +95,7 @@ class ProdamusProvider implements PaymentProviderInterface
             'invoice_id' => (string) ($data['order_id'] ?? ''),
             'status'     => $status,
             'amount'     => (float) ($data['sum'] ?? 0),
+            'provider'   => 'prodamus',
         ];
     }
 }

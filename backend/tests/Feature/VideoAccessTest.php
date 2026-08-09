@@ -7,6 +7,7 @@ use App\Models\Video;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -128,7 +129,7 @@ class VideoAccessTest extends TestCase
         $this->getJson("/api/videos/{$video->id}")->assertOk();
     }
 
-    public function test_video_urls_are_relative_to_api(): void
+    public function test_video_url_is_a_signed_stream_link(): void
     {
         Sanctum::actingAs($this->premiumUser());
 
@@ -136,7 +137,7 @@ class VideoAccessTest extends TestCase
 
         $this->getJson("/api/videos/{$video->id}")
             ->assertOk()
-            ->assertJsonPath('video_url', '/storage/'.$video->file_path);
+            ->assertJsonPath('video_url', URL::temporarySignedRoute('videos.stream', now()->addMinutes(30), ['video' => $video->id], false));
     }
 
     public function test_free_user_cannot_fetch_subtitle(): void
@@ -165,7 +166,7 @@ class VideoAccessTest extends TestCase
             'file_path' => 'subtitles/sample.vtt',
         ]);
 
-        Storage::disk('public')->put('subtitles/sample.vtt', "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nおはようございます\n");
+        Storage::disk('local')->put('subtitles/sample.vtt', "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nおはようございます\n");
 
         $this->get("/api/videos/{$video->id}/subtitles/{$subtitle->id}")
             ->assertOk()
@@ -185,6 +186,42 @@ class VideoAccessTest extends TestCase
         ]);
 
         $this->getJson("/api/videos/{$video->id}/subtitles/{$subtitle->id}")
+            ->assertStatus(404);
+    }
+
+    public function test_stream_requires_valid_signature(): void
+    {
+        $video = $this->createVideo();
+        Storage::disk('local')->put($video->file_path, 'fake-video-bytes');
+
+        // Без подписи — 403
+        $this->get("/api/videos/{$video->id}/stream")
+            ->assertStatus(403);
+
+        // С подписанной ссылкой — 200 и тело файла
+        $signed = URL::temporarySignedRoute('videos.stream', now()->addMinutes(30), ['video' => $video->id], false);
+        $this->get($signed)
+            ->assertOk()
+            ->assertStreamedContent('fake-video-bytes');
+    }
+
+    public function test_stream_with_expired_signature_is_blocked(): void
+    {
+        $video = $this->createVideo();
+        Storage::disk('local')->put($video->file_path, 'fake-video-bytes');
+
+        $signed = URL::temporarySignedRoute('videos.stream', now()->subMinute(), ['video' => $video->id], false);
+        $this->get($signed)
+            ->assertStatus(403);
+    }
+
+    public function test_stream_of_unpublished_video_is_blocked(): void
+    {
+        $video = Video::factory()->unpublished()->create();
+        Storage::disk('local')->put($video->file_path, 'fake-video-bytes');
+
+        $signed = URL::temporarySignedRoute('videos.stream', now()->addMinutes(30), ['video' => $video->id], false);
+        $this->get($signed)
             ->assertStatus(404);
     }
 }

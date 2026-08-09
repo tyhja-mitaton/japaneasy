@@ -20,10 +20,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth (публичные) ──────────────────────────────────────────────────────────
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login',    [AuthController::class, 'login']);
-Route::post('/auth/forgot-password',  [AuthController::class, 'forgotPassword']);
-Route::post('/auth/reset-password',   [AuthController::class, 'resetPassword']);
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,60');
+Route::post('/auth/login',    [AuthController::class, 'login'])->middleware('throttle:10,60');
+Route::post('/auth/forgot-password',  [AuthController::class, 'forgotPassword'])->middleware('throttle:5,60');
+Route::post('/auth/reset-password',   [AuthController::class, 'resetPassword'])->middleware('throttle:10,60');
 Route::get('/auth/login', function () {
     return redirect(env('FRONTEND_URL') . '/auth/login');
 })->name('login');
@@ -75,13 +75,14 @@ Route::get('/grammar-articles',       [GrammarArticleController::class, 'index']
 Route::get('/grammar-articles/{code}', [GrammarArticleController::class, 'showByCode']);
 
 // ── Вебхуки (без auth, но с проверкой подписи внутри) ────────────────────────
+// Протокол допускает повторную доставку, поэтому лимит щедрый — он закрывает только флуд.
 Route::post('/webhooks/robokassa', [PaymentController::class, 'webhookRobokassa'])
     ->name('webhook.robokassa')
-    ->withoutMiddleware(['throttle']);
+    ->middleware('throttle:60,60');
 
 Route::post('/webhooks/prodamus',  [PaymentController::class, 'webhookProdamus'])
     ->name('webhook.prodamus')
-    ->withoutMiddleware(['throttle']);
+    ->middleware('throttle:60,60');
 
 // Видео — только для Premium (админы/менеджеры могут просматривать)
 Route::middleware(['auth:sanctum', 'premium'])->group(function () {
@@ -89,6 +90,11 @@ Route::middleware(['auth:sanctum', 'premium'])->group(function () {
     Route::get('/videos/{video}', [VideoController::class, 'show']);
     Route::get('/videos/{video}/subtitles/{subtitle}', [VideoController::class, 'subtitle']);
 });
+
+// Потоковая передача видео — публичный маршрут, но только по валидной
+// подписанной ссылке (срок 30 минут). <video> не может слать Authorization.
+Route::get('/videos/{video}/stream', [VideoController::class, 'stream'])
+    ->name('videos.stream');
 
 
 // ── Защищённые маршруты ───────────────────────────────────────────────────────

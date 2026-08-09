@@ -59,13 +59,13 @@ npm run lint           # eslint
 
 FastAPI at `/nlp-service/main.py`. Endpoints: `/health`, `/analyze/word`, `/tokenize`, `/grammar`
 
-Requires `LLM_API_KEY` env var (Anthropic).
+Requires `NLP_SERVICE_TOKEN` env var — shared secret, all endpoints except `/health` return 401 without `Authorization: Bearer <token>`.
 
 ## Environment Variables
 
 Root `.env`:
 - `DB_PASSWORD`, `DB_DATABASE`, `DB_USERNAME` - PostgreSQL
-- `LLM_API_KEY` - Anthropic API key for NLP service
+- `NLP_SERVICE_TOKEN` - shared secret for the NLP service (must match between laravel and nlp containers)
 
 Production adds: `APP_KEY`, `APP_URL`, `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET`
 

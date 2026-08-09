@@ -18,6 +18,10 @@ async function apiFetch(path: string, options: RequestInit = {}) {
     },
   });
   const data = await res.json();
+  if (res.status === 401 && token) {
+    localStorage.removeItem('token');
+    notifyAuthChanged();
+  }
   if (!res.ok) throw { status: res.status, ...data };
   return data;
 }

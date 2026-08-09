@@ -115,6 +115,7 @@ class UserTextController extends Controller
         }
 
         $nlpResponse = Http::timeout(30)
+            ->withToken(config('services.nlp.token'))
             ->post(config('services.nlp.url') . '/tokenize', [
                 'text' => $userText->content,
             ]);
@@ -144,6 +145,7 @@ class UserTextController extends Controller
 
 
         $nlpResponse = Http::timeout(30)
+            ->withToken(config('services.nlp.token'))
             ->post(config('services.nlp.url') . '/grammar', [
                 'text' => $userText->content,
                 'patterns' => $patterns,

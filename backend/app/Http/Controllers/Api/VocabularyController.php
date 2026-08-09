@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserText;
 use App\Models\VocabularyItem;
 use App\Services\PlanLimits;
 use Illuminate\Http\JsonResponse;
@@ -33,6 +34,16 @@ class VocabularyController extends Controller
         ]);
 
         PlanLimits::checkVocabulary($request->user(), $data['base_form']);
+
+        // IDOR: источник текста должен принадлежать текущему пользователю
+        if (!empty($data['source_text_id'])) {
+            $owned = UserText::where('id', $data['source_text_id'])
+                ->where('user_id', $request->user()->id)
+                ->exists();
+            if (!$owned) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
 
         $item = VocabularyItem::updateOrCreate(
             ['user_id' => $request->user()->id, 'base_form' => $data['base_form']],
@@ -83,6 +94,15 @@ class VocabularyController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // CSV injection: экранируем ячейки, начинающиеся с формульных символов
+        $safe = function (?string $value): string {
+            $value ??= '';
+            if ($value !== '' && str_contains('=+-@', $value[0])) {
+                return "'" . $value;
+            }
+            return $value;
+        };
+
         $handle = fopen('php://temp', 'w+');
 
         // UTF-8 BOM для корректного открытия в Excel
@@ -95,12 +115,12 @@ class VocabularyController extends Controller
 
         foreach ($items as $item) {
             fputcsv($handle, [
-                $item->surface,
-                $item->base_form,
-                $item->reading,
-                $item->pos,
-                $item->translation,
-                $item->context_sentence,
+                $safe($item->surface),
+                $safe($item->base_form),
+                $safe($item->reading),
+                $safe($item->pos),
+                $safe($item->translation),
+                $safe($item->context_sentence),
                 $item->created_at?->toDateTimeString(),
             ]);
         }

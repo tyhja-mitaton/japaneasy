@@ -161,4 +161,59 @@ class VocabularyExportTest extends TestCase
     {
         $this->get('/api/vocabulary/export/anki')->assertUnauthorized();
     }
+
+    public function test_csv_export_escapes_formula_injection(): void
+    {
+        $user = User::factory()->create();
+
+        VocabularyItem::create([
+            'user_id'          => $user->id,
+            'surface'          => '=HYPERLINK("http://evil.example")',
+            'base_form'        => '+cmd|/C calc',
+            'reading'          => '@SUM(A1:A2)',
+            'pos'              => '-2+3',
+            'translation'      => 'кошка',
+            'context_sentence' => '猫が好きです。',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->get('/api/vocabulary/export/csv');
+
+        $response->assertOk();
+        $content = $response->getContent();
+
+        // Каждая формульная ячейка должна быть экранирована ведущей кавычкой
+        $this->assertStringContainsString("'=HYPERLINK", $content);
+        $this->assertStringContainsString("'+cmd|/C calc", $content);
+        $this->assertStringContainsString("'@SUM(A1:A2)", $content);
+        $this->assertStringContainsString("'-2+3", $content);
+
+        // Ни одна ячейка не должна начинаться с формульного символа без кавычки
+        foreach (['=HYPERLINK', '+cmd', '@SUM', '-2+3'] as $dangerous) {
+            $this->assertDoesNotMatchRegularExpression('/[^"\']' . preg_quote($dangerous, '/') . '/', $content);
+        }
+    }
+
+    public function test_csv_export_does_not_escape_normal_cells(): void
+    {
+        $user = User::factory()->create();
+
+        VocabularyItem::create([
+            'user_id'          => $user->id,
+            'surface'          => '猫',
+            'base_form'        => '猫',
+            'reading'          => 'ネコ',
+            'pos'              => 'noun',
+            'translation'      => 'кошка',
+            'context_sentence' => '猫が好きです。',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $content = $this->get('/api/vocabulary/export/csv')->getContent();
+
+        $this->assertStringNotContainsString("'猫", $content);
+        $this->assertStringNotContainsString("'кошка", $content);
+    }
 }

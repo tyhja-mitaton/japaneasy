@@ -3,20 +3,24 @@
 Запуск (внутри контейнера nlp):
     python -m unittest discover -s . -p 'test_*.py'
 """
+import os
 import unittest
+
+os.environ["NLP_SERVICE_TOKEN"] = "test-secret-token"
 
 from fastapi.testclient import TestClient
 
 from main import app
 
 client = TestClient(app)
+AUTH = {"Authorization": "Bearer test-secret-token"}
 
 
 def grammar(text: str, pattern: str, code: str = "test"):
     resp = client.post("/grammar", json={
         "text": text,
         "patterns": [{"code": code, "pattern": pattern}],
-    })
+    }, headers=AUTH)
     assert resp.status_code == 200, resp.text
     return resp.json()["patterns"]
 
@@ -177,7 +181,7 @@ class NewPatternsTest(unittest.TestCase):
                 {"code": "particle-wa", "pattern": "~は"},
                 {"code": "copula-da", "pattern": "{meishi|keiyodoushi}だ"},
             ],
-        })
+        }, headers=AUTH)
         self.assertEqual(resp.status_code, 200, resp.text)
         matches = resp.json()["patterns"]
         self.assertEqual(
@@ -192,7 +196,7 @@ class NewPatternsTest(unittest.TestCase):
         resp = client.post("/grammar", json={
             "text": "食べたのに。",
             "patterns": [{"code": "no-ni", "pattern": "!のに"}],
-        })
+        }, headers=AUTH)
         self.assertEqual(resp.status_code, 200, resp.text)
         data = resp.json()
 
@@ -225,7 +229,7 @@ class LookbehindTest(unittest.TestCase):
         resp = client.post("/grammar", json={
             "text": "綺麗だ",
             "patterns": [{"code": "t", "pattern": "[meishi|keiyodoushi]だ"}],
-        })
+        }, headers=AUTH)
         self.assertEqual(resp.status_code, 200, resp.text)
         m = resp.json()["patterns"][0]
         self.assertEqual((m["surface"], m["start"], m["end"]), ("だ", 2, 3))
@@ -259,6 +263,34 @@ class LookbehindTest(unittest.TestCase):
     def test_unknown_bracket_is_literal(self):
         # неизвестные ключи внутри [...] не делают lookbehind — обрабатываются как литерал
         self.assertEqual(surfaces("a[b]c", "[b]"), ["[b]"])
+
+
+class AuthTest(unittest.TestCase):
+    """Все endpoint'ы, кроме /health, требуют Bearer-токен."""
+
+    def test_health_is_public(self):
+        resp = client.get("/health")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_grammar_requires_token(self):
+        resp = client.post("/grammar", json={
+            "text": "私は学生だ",
+            "patterns": [{"code": "test", "pattern": "~は"}],
+        })
+        self.assertEqual(resp.status_code, 401)
+
+    def test_grammar_rejects_wrong_token(self):
+        resp = client.post("/grammar", headers={"Authorization": "Bearer wrong"},
+                           json={"text": "私は", "patterns": []})
+        self.assertEqual(resp.status_code, 401)
+
+    def test_tokenize_requires_token(self):
+        resp = client.post("/tokenize", json={"text": "私は学生だ"})
+        self.assertEqual(resp.status_code, 401)
+
+    def test_analyze_word_requires_token(self):
+        resp = client.post("/analyze/word", json={"word": "学生"})
+        self.assertEqual(resp.status_code, 401)
 
 
 if __name__ == "__main__":
