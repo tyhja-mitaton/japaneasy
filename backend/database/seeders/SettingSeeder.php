@@ -42,6 +42,11 @@ class SettingSeeder extends Seeder
             ['key' => 'prodamus_shop_url',      'value' => '',           'description' => 'Prodamus shop URL (example.payform.ru)'],
             ['key' => 'prodamus_api_key',       'value' => '',           'description' => 'Prodamus API ключ'],
             ['key' => 'prodamus_secret_key',    'value' => '',           'description' => 'Prodamus секретный ключ для подписи'],
+
+            // ── Юридические данные (страница контактов /legal/info) ──────
+            ['key' => 'legal_fio',              'value' => '',           'description' => 'ФИО владельца (публикуется на странице контактов)'],
+            ['key' => 'legal_inn',              'value' => '',           'description' => 'ИНН владельца (публикуется на странице контактов)'],
+            ['key' => 'legal_email',            'value' => '',           'description' => 'Контактный e-mail (публикуется на странице контактов)'],
         ];
 
         foreach ($defaults as $setting) {

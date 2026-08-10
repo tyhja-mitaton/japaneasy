@@ -56,6 +56,10 @@ const GROUPS: Group[] = [
     titleKey: 'groupProdamus',
     keys: ['prodamus_shop_url', 'prodamus_api_key', 'prodamus_secret_key'],
   },
+  {
+    titleKey: 'groupLegal',
+    keys: ['legal_fio', 'legal_inn', 'legal_email'],
+  },
 ];
 
 // Поля с выбором из вариантов (label = ключ i18n)

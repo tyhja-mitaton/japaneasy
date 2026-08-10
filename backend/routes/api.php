@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\LanguageController;
+use App\Http\Controllers\Api\LegalController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\UserDictionaryPreferenceController;
 use App\Http\Controllers\Api\UserTextController;
@@ -73,6 +74,9 @@ Route::post('/feedback', [FeedbackController::class, 'store'])
 // ── Грамматические статьи (публичные — для чтения) ────────────────────────────
 Route::get('/grammar-articles',       [GrammarArticleController::class, 'index']);
 Route::get('/grammar-articles/{code}', [GrammarArticleController::class, 'showByCode']);
+
+// Контактные данные (страница /legal/info) — публично
+Route::get('/legal/info', [LegalController::class, 'info']);
 
 // ── Вебхуки (без auth, но с проверкой подписи внутри) ────────────────────────
 // Протокол допускает повторную доставку, поэтому лимит щедрый — он закрывает только флуд.

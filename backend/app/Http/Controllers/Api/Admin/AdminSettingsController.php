@@ -38,6 +38,10 @@ class AdminSettingsController extends Controller
         'prodamus_shop_url',
         'prodamus_api_key',
         'prodamus_secret_key',
+        // Юридические данные
+        'legal_fio',
+        'legal_inn',
+        'legal_email',
     ];
 
     // Ключи которые нельзя вернуть в открытом виде

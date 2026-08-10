@@ -6,6 +6,13 @@ import { useI18n, tf } from '@/lib/i18n';
 export default function Footer() {
   const { t } = useI18n();
 
+  const linkStyle: React.CSSProperties = {
+    fontSize: 13,
+    color: '#8B7355',
+    textDecoration: 'none',
+    transition: 'color 0.2s',
+  };
+
   return (
     <footer style={{
       borderTop: '1px solid #EDE8E1',
@@ -24,13 +31,17 @@ export default function Footer() {
       <div style={{ fontSize: 13, color: '#8B7355' }}>
         {t.footer.motto}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-        <Link href="/feedback" className="link-hover-text-coral" style={{
-          fontSize: 13,
-          color: '#8B7355',
-          textDecoration: 'none',
-          transition: 'color 0.2s',
-        }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <Link href="/legal/privacy" className="link-hover-text-coral" style={linkStyle}>
+          {t.footer.privacy}
+        </Link>
+        <Link href="/legal/oferta" className="link-hover-text-coral" style={linkStyle}>
+          {t.footer.oferta}
+        </Link>
+        <Link href="/legal/info" className="link-hover-text-coral" style={linkStyle}>
+          {t.footer.contacts}
+        </Link>
+        <Link href="/feedback" className="link-hover-text-coral" style={linkStyle}>
           {t.footer.feedback}
         </Link>
         <div style={{ fontSize: 12, color: '#D4C5B0' }}>{tf(t.footer.copyright, { year: new Date().getFullYear() })}</div>
