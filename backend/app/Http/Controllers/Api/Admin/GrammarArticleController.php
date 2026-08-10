@@ -13,7 +13,7 @@ class GrammarArticleController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $perPage = 10;
+        $perPage = 20;
         $page    = $request->input('page', 1);
         $search  = mb_strtolower(trim((string) $request->input('search', '')));
 
