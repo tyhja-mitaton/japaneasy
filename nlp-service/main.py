@@ -202,23 +202,48 @@ def _behind_matches(tokens: list[dict], bounds: list[tuple[int, int]],
     return False
 
 
-def compile_pattern(pattern: str) -> list[tuple]:
-    """
-    Компилирует паттерн в последовательность атомов:
-      ("lit", text)       — литерал (подстрока)
-      ("opts", [text,..]) — один из литералов {A|B}
-      ("any",)            — любой непустой текст (ленивый) ~
-      ("pred", [kw,..])   — группа предикатов {meishi|keiyoshi} — целый токен
-      ("behind", [kw,..]) — lookbehind: предикаты сразу перед матчем (нулевой
-                            ширины, в спан не входят)
+KEYWORDS = set(POS_PREDICATES) | set(MULTI_PREDICATES)
 
-    {A|B|..} трактуется как группа-предикат только если ВСЕ варианты — ключевые
-    слова; иначе это литеральные варианты (существующее поведение).
+
+def _find_close(s: str, i: int, open_ch: str, close_ch: str) -> int | None:
+    """Индекс парного закрывающего символа с учётом вложенности, или None."""
+    depth = 0
+    while i < len(s):
+        ch = s[i]
+        if ch == open_ch:
+            depth += 1
+        elif ch == close_ch:
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+
+def _parse_alternatives(s: str, i: int, close: str) -> tuple[list[tuple], int]:
+    """Альтернативы группы {…} или […], разделённые `|` на текущем уровне.
+
+    Возвращает (список альтернатив, позиция после закрывающего символа).
     """
-    atoms = []
+    alts: list[tuple] = []
+    seq, i = _parse_sequence(s, i, close)
+    alts.append(seq)
+    while i < len(s) and s[i] == "|":
+        seq, i = _parse_sequence(s, i + 1, close)
+        alts.append(seq)
+    if i < len(s) and s[i] == close:
+        i += 1
+    return alts, i
+
+
+def _parse_sequence(s: str, i: int, end: str | None) -> tuple[tuple, int]:
+    """Последовательность атомов до символа end (None — до конца строки).
+
+    `|` и end являются разделителями только внутри группы (end задан).
+    """
+    atoms: list[tuple] = []
     literal: list[str] = []
-    i = 0
-    n = len(pattern)
+    n = len(s)
 
     def flush() -> None:
         if literal:
@@ -226,45 +251,104 @@ def compile_pattern(pattern: str) -> list[tuple]:
             literal.clear()
 
     while i < n:
-        ch = pattern[i]
+        ch = s[i]
         if ch == "~":
             flush()
             atoms.append(("any",))
             i += 1
         elif ch == "{":
-            end = pattern.find("}", i)
-            if end == -1:
+            if _find_close(s, i, "{", "}") is not None:
+                flush()
+                alts, i = _parse_alternatives(s, i + 1, "}")
+                atoms.append(_classify_braces(alts))
+            else:
                 literal.append(ch)
                 i += 1
-                continue
-            options = pattern[i + 1:end].split("|")
-            if options and all(k in POS_PREDICATES or k in MULTI_PREDICATES for k in options):
-                flush()
-                atoms.append(("pred", options))
-            else:
-                flush()
-                atoms.append(("opts", options))
-            i = end + 1
         elif ch == "[":
-            end = pattern.find("]", i)
-            if end == -1:
-                literal.append(ch)
-                i += 1
-                continue
-            options = pattern[i + 1:end].split("|")
-            if options and all(k in POS_PREDICATES or k in MULTI_PREDICATES for k in options):
+            if _find_close(s, i, "[", "]") is not None:
+                start = i
                 flush()
-                atoms.append(("behind", options))
+                alts, i = _parse_alternatives(s, i + 1, "]")
+                kind = _classify_brackets(alts)
+                if kind is None:
+                    atoms.append(("lit", s[start:i]))
+                else:
+                    atoms.append(kind)
             else:
                 literal.append(ch)
                 i += 1
-                continue
-            i = end + 1
+        elif end is not None and (ch == end or ch == "|"):
+            break
         else:
             literal.append(ch)
             i += 1
 
     flush()
+    return tuple(atoms), i
+
+
+def _classify_braces(alts: list[tuple]) -> tuple:
+    """Группа {…}: pred (все альтернативы — ключевые слова), opts (все —
+    одиночные литералы) или choice (составные альтернативы).
+
+    Пустая альтернатива нормализуется в литерал "" — например, {だ|です|}
+    остаётся набором литералов, а не группой с нулевой шириной.
+    """
+    normalized = [alt if alt else (("lit", ""),) for alt in alts]
+    pred_kws: list[str] = []
+    all_pred = True
+    all_single_lit = True
+    for alt in normalized:
+        if len(alt) == 1 and alt[0][0] == "lit" and alt[0][1] in KEYWORDS:
+            pred_kws.append(alt[0][1])
+        else:
+            all_pred = False
+        if len(alt) != 1 or alt[0][0] != "lit":
+            all_single_lit = False
+    if all_pred:
+        return ("pred", tuple(pred_kws))
+    if all_single_lit:
+        return ("opts", tuple(alt[0][1] for alt in normalized))
+    return ("choice", tuple(normalized))
+
+
+def _classify_brackets(alts: list[tuple]) -> tuple | None:
+    """Скобки […]: behind, если все альтернативы — ключевые слова; иначе None
+    (вызывающий код восстановит исходный литерал "[...]" — прежнее поведение).
+    """
+    kws: list[str] = []
+    for alt in alts:
+        if len(alt) == 1 and alt[0][0] == "lit" and alt[0][1] in KEYWORDS:
+            kws.append(alt[0][1])
+        else:
+            return None
+    if not kws:
+        return None
+    return ("behind", tuple(kws))
+
+
+def compile_pattern(pattern: str) -> tuple:
+    """
+    Компилирует паттерн в последовательность атомов:
+      ("lit", text)        — литерал (подстрока)
+      ("opts", (text,..))  — один из литералов {A|B}
+      ("any",)             — любой непустой текст (ленивый) ~
+      ("pred", (kw,..))    — группа предикатов {meishi|keiyoshi} — целый токен
+      ("behind", (kw,..))  — lookbehind: предикаты сразу перед матчем (нулевой
+                             ширины, в спан не входят)
+      ("choice", (seq,..)) — вложенная группа {…}: одна из составных альтернатив
+                             (seq — последовательность атомов)
+
+    {A|B|..} трактуется как pred только если ВСЕ варианты — ключевые слова; как
+    opts — если ВСЕ варианты — одиночные литералы; иначе это вложенная группа
+    (choice), альтернативы которой — произвольные последовательности и могут
+    содержать lookbehind [...], группы {...} и ~.
+
+    [A|B] трактуется как behind только если ВСЕ варианты — ключевые слова;
+    иначе это литерал (существующее поведение). Пары скобок ищутся с учётом
+    вложенности; незакрытая скобка — литерал.
+    """
+    atoms, _ = _parse_sequence(pattern, 0, None)
     return atoms
 
 
@@ -281,7 +365,9 @@ def _valid_token_starts(tokens: list[dict], bounds: list[tuple[int, int]],
 
 
 def _candidate_positions(atom: tuple, text: str, min_pos: int,
-                         token_starts: list[int]) -> list[int]:
+                         pred_starts: dict[tuple, list[int]],
+                         key: tuple, tokens: list[dict],
+                         bounds: list[tuple[int, int]]) -> list[int]:
     """Куда может начаться следующий атом после `~` (позиции > min_pos)."""
     kind = atom[0]
     if kind == "any":
@@ -294,7 +380,16 @@ def _candidate_positions(atom: tuple, text: str, min_pos: int,
             positions.extend(_occurrences(text, opt, min_pos))
         return sorted(set(positions))
     if kind == "pred":
-        return [s for s in token_starts if s > min_pos]
+        return [s for s in pred_starts.get(key, []) if s > min_pos]
+    if kind == "choice":
+        # По первым атомам альтернатив (behind — нулевая ширина, не кандидат).
+        positions = []
+        for alt in atom[1]:
+            if not alt:
+                continue
+            positions.extend(_candidate_positions(
+                alt[0], text, min_pos, pred_starts, (alt, 0), tokens, bounds))
+        return sorted(set(positions))
     # kind == "behind" и др. → []: `~[A]C` не поддерживается (нулевая ширина
     # lookbehind после ~ требует позиций конца токенов; не требуется на практике).
     return []
@@ -312,7 +407,7 @@ def _occurrences(text: str, needle: str, min_pos: int) -> list[int]:
 
 
 def find_matches(text: str, bounds: list[tuple[int, int]],
-                 tokens: list[dict], atoms: list[tuple]) -> list[tuple[int, int]]:
+                 tokens: list[dict], atoms: tuple) -> list[tuple[int, int]]:
     """
     Возвращает непересекающиеся совпадения (start, end) в рабочем тексте,
     аналогично re.finditer для паттерна, заякоренного на стартовой позиции.
@@ -326,48 +421,57 @@ def find_matches(text: str, bounds: list[tuple[int, int]],
         if atom[0] == "any" and collapsed and collapsed[-1][0] == "any":
             continue
         collapsed.append(atom)
-    atoms = collapsed
+    atoms = tuple(collapsed)
 
-    # Предикатные стартовые позиции (для ~ и прямых pred-совпадений)
-    pred_starts: dict[int, list[int]] = {}
-    for ai, atom in enumerate(atoms):
-        if atom[0] == "pred":
-            pred_starts[ai] = _valid_token_starts(tokens, bounds, atom[1], -1)
+    # Предикатные стартовые позиции (для ~ и прямых pred-совпадений):
+    # пред-вычисляются для всех pred-атомов дерева, включая вложенные в choice.
+    pred_starts: dict[tuple, list[int]] = {}
 
-    memo: dict[tuple[int, int], list[int]] = {}
+    def collect(seq: tuple) -> None:
+        for ai, atom in enumerate(seq):
+            if atom[0] == "pred":
+                pred_starts[(seq, ai)] = _valid_token_starts(tokens, bounds, atom[1], -1)
+            elif atom[0] == "choice":
+                for alt in atom[1]:
+                    collect(alt)
 
-    def match_here(ai: int, p: int) -> list[int]:
+    collect(atoms)
+
+    memo: dict[tuple, list[int]] = {}
+
+    def match_here(seq: tuple, ai: int, p: int) -> list[int]:
         """Все возможные конечные позиции (отсортированы по возрастанию)."""
-        if ai == len(atoms):
+        if ai == len(seq):
             return [p] if p <= len(text) else []
-        key = (ai, p)
+        key = (seq, ai, p)
         if key in memo:
             return memo[key]
 
         results: list[int] = []
-        atom = atoms[ai]
+        atom = seq[ai]
         kind = atom[0]
 
         if kind == "lit":
             s = atom[1]
             if text.startswith(s, p):
-                results = match_here(ai + 1, p + len(s))
+                results = match_here(seq, ai + 1, p + len(s))
         elif kind == "opts":
             for opt in atom[1]:
                 if text.startswith(opt, p):
-                    results = match_here(ai + 1, p + len(opt))
+                    results = match_here(seq, ai + 1, p + len(opt))
                     if results:
                         break
         elif kind == "any":
-            if ai + 1 == len(atoms):
+            if ai + 1 == len(seq):
                 # `~` в конце — совпадает весь остаток текста
                 if p < len(text):
                     results = [len(text)]
             else:
-                nxt = atoms[ai + 1]
-                candidates = _candidate_positions(nxt, text, p, pred_starts.get(ai + 1, []))
+                nxt = seq[ai + 1]
+                candidates = _candidate_positions(
+                    nxt, text, p, pred_starts, (seq, ai + 1), tokens, bounds)
                 for q in candidates:
-                    r = match_here(ai + 1, q)
+                    r = match_here(seq, ai + 1, q)
                     if r:
                         results = r
                         break
@@ -375,7 +479,7 @@ def find_matches(text: str, bounds: list[tuple[int, int]],
             # Lookbehind: нулевой ширины, токен-группа должна заканчиваться ровно
             # в p (в спан матча не входит — спан начинается с p).
             if _behind_matches(tokens, bounds, p, atom[1]):
-                results = match_here(ai + 1, p)
+                results = match_here(seq, ai + 1, p)
         elif kind == "pred":
             # Требуем начало токена
             idx = None
@@ -389,12 +493,20 @@ def find_matches(text: str, bounds: list[tuple[int, int]],
                 for kw in atom[1]:
                     for consumed in _predicate_consumptions(tokens, idx, kw):
                         end = bounds[idx + consumed - 1][1]
-                        results.extend(match_here(ai + 1, end))
+                        results.extend(match_here(seq, ai + 1, end))
                     if results:
                         break
                 # Кратчайший вариант первым — прежнее поведение (основа без
                 # поглощённых 助動詞) сохраняется.
                 results = sorted(set(results))
+        elif kind == "choice":
+            # Вложенная группа: пробуем каждую альтернативу, берём все конечные
+            # позиции (кратчайший вариант первым — как для pred).
+            for alt in atom[1]:
+                r = match_here(alt, 0, p)
+                if r:
+                    results.extend(r)
+            results = sorted(set(results))
 
         memo[key] = results
         return results
@@ -403,7 +515,7 @@ def find_matches(text: str, bounds: list[tuple[int, int]],
     p = 0
     n = len(text)
     while p < n:
-        ends = match_here(0, p)
+        ends = match_here(atoms, 0, p)
         if ends:
             end = ends[0]
             if end > p:
@@ -526,8 +638,12 @@ def analyze_grammar(req: GrammarRequest):
 
     Синтаксис паттерна:
       ~                    → любой непустой текст (ленивый)
-      {A|B|C}              → один из литералов (если ни один элемент не ключевое слово)
+      {A|B|C}              → один из литералов (если все элементы — литералы)
       {meishi|keiyoshi}    → группа POS/форм (если ВСЕ элементы — ключевые слова)
+      {…|…}                → вложенная группа: альтернативы — произвольные
+                             последовательности, в т.ч. с [...] и {...}
+                             (если хотя бы одна альтернатива составная);
+                             например {[doushi|keiyoshi]から|[meishi|keiyodoushi]{だ|です}から}
       [meishi|keiyodoushi] → lookbehind: предикатная группа сразу перед матчем
                              (в спан не входит, нулевой ширины); поглощает
                              следующие подряд 助動詞 (ます/た и т.п.)

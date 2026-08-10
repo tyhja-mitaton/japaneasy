@@ -265,6 +265,82 @@ class LookbehindTest(unittest.TestCase):
         self.assertEqual(surfaces("a[b]c", "[b]"), ["[b]"])
 
 
+class NestedParserTest(unittest.TestCase):
+    """Единичные тесты рекурсивного парсера (compile_pattern)."""
+
+    def test_unclosed_brace_is_literal(self):
+        from main import compile_pattern
+        self.assertEqual(compile_pattern("{b"), (("lit", "{b"),))
+
+    def test_empty_option_normalized_to_opts(self):
+        from main import compile_pattern
+        self.assertEqual(compile_pattern("{だ|です|}"), (("opts", ("だ", "です", "")),))
+
+    def test_non_keyword_bracket_is_literal(self):
+        from main import compile_pattern
+        self.assertEqual(
+            compile_pattern("[て|で]まで"),
+            (("lit", "[て|で]"), ("lit", "まで")),
+        )
+
+    def test_compound_is_choice(self):
+        from main import compile_pattern
+        atoms = compile_pattern(
+            "{[doushi|keiyoshi]から|[meishi|keiyodoushi]{だ|です}から}"
+        )
+        self.assertEqual(atoms, (
+            ("choice", (
+                (("behind", ("doushi", "keiyoshi")), ("lit", "から")),
+                (("behind", ("meishi", "keiyodoushi")),
+                 ("opts", ("だ", "です")), ("lit", "から")),
+            )),
+        ))
+
+
+class NestedChoiceTest(unittest.TestCase):
+    """Вложенные группы {…}: {[A|B]C|[D]{E|F}G} — одна из составных альтернатив."""
+
+    PATTERN = "{[doushi|keiyoshi]から|[meishi|keiyodoushi]{だ|です}から}"
+
+    def test_doushi_kara(self):
+        self.assertEqual(surfaces("食べるから", self.PATTERN), ["から"])
+
+    def test_keiyoshi_kara(self):
+        self.assertEqual(surfaces("高いから", self.PATTERN), ["から"])
+
+    def test_meishi_da_kara(self):
+        self.assertEqual(surfaces("学生だから", self.PATTERN), ["だから"])
+
+    def test_keiyodoushi_desu_kara(self):
+        self.assertEqual(surfaces("綺麗ですから", self.PATTERN), ["ですから"])
+
+    def test_no_match_plain_noun(self):
+        # 机 — meishi, но за ней нет だ/です, а не является doushi/keiyoshi
+        self.assertEqual(surfaces("机から", self.PATTERN), [])
+
+    def test_multiple_matches(self):
+        self.assertEqual(
+            surfaces("高いから学生だから綺麗ですから", self.PATTERN),
+            ["から", "だから", "ですから"],
+        )
+
+
+class NestedEmptyOptionTest(unittest.TestCase):
+    """Пустая альтернатива внутри вложенной группы — литерал "". """
+
+    PATTERN = "{[doushi|keiyoshi]から|[meishi|keiyodoushi]{だ|です|}から}"
+
+    def test_empty_option_meishi_kara(self):
+        # {だ|です|} — пустой вариант: 学生から тоже подходит
+        self.assertEqual(surfaces("学生から", self.PATTERN), ["から"])
+
+    def test_empty_option_desu_kara(self):
+        self.assertEqual(surfaces("学生ですから", self.PATTERN), ["ですから"])
+
+    def test_empty_option_da_kara(self):
+        self.assertEqual(surfaces("学生だから", self.PATTERN), ["だから"])
+
+
 class AuthTest(unittest.TestCase):
     """Все endpoint'ы, кроме /health, требуют Bearer-токен."""
 

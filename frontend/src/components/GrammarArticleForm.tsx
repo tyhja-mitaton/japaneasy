@@ -125,7 +125,7 @@ const PATTERN_SHORTCUTS: { label: string; value: string }[] = [
     { label: 'adj', value: 'keiyoshi' },
     { label: 'adj.noun', value: 'keiyodoushi' },
     { label: 'verb', value: 'doushi' },
-    { label: 'pronoun', value: 'daimeish' },
+    { label: 'pronoun', value: 'daimeishi' },
     { label: 'base', value: 'kohonkei' },
     { label: 'past', value: 'kakokei' },
     { label: 'negative', value: 'hiteikei' },
